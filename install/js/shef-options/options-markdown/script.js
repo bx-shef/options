@@ -31,7 +31,7 @@ BX.ShOptions.Markdown.prototype = {
 		
 		this.unFade(false);
 		this.linkForOpen = document.createElement('a')
-		this.linkForOpen.target = "'_blank";
+		this.linkForOpen.target = "_blank";
 		
 		this.bind();
 		this._log('init', true);
@@ -67,9 +67,12 @@ BX.ShOptions.Markdown.prototype = {
 		event.stopImmediatePropagation();
 		
 		const url = event.target.getAttribute('href');
-		const extension = url.split('.').pop();
 		
-		if(extension !== 'md')
+		// Внешнюю ссылку отдаём браузеру, а внутренний .md грузим ajax'ом.
+		// Решать только по расширению нельзя: документация живёт в репозитории,
+		// и её адрес на GitHub тоже кончается на «.md» — такая ссылка ушла бы
+		// в ajax, который ищет файл в каталоге модуля, и вернулась ошибкой.
+		if(this.isExternal(url) || url.split('.').pop() !== 'md')
 		{
 			this.linkForOpen.href = url;
 			this.linkForOpen.click();
@@ -155,6 +158,12 @@ BX.ShOptions.Markdown.prototype = {
 	}
 	// endregion ////
 	// region Tools ////
+	, isExternal: function(url)
+	{
+		// Схема (http:, https:, mailto:) либо протокол-относительный «//».
+		return /^(?:[a-z][a-z0-9+.\-]*:|\/\/)/i.test(url);
+	}
+	
 	, _log: function(value, allTime = false)
 	{
 		if(this.isDebug || allTime)
