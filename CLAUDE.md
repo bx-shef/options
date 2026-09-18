@@ -33,11 +33,23 @@ namespace `\Shef\Options\Main\Options\Markdown` живёт под префикс
 `deny all` на `^/bitrix/(modules|local_cache|stack_cache|managed_cache|php_interface)`.
 Поэтому `install/css` и `install/js` копируются установщиком в `/bitrix/css`
 и `/bitrix/js` — карта в `.settings.php`, ключ `installDir`. Расширение
-регистрируется в `register-js.php` как `shef-options-admin` и читает
-`/bitrix/css/shef.options/admin-options.css`. Путь в `installDir` и путь в
-`register-js.php` обязаны сходиться: разойдутся — файлы лягут в одно место,
-страница попросит из другого, и выглядеть это будет как «стили пропали», а не
-как ошибка установки.
+регистрируется в `register-js.php` как `shef-options-admin`.
+
+**Публичный путь живёт в одном месте** — `Constants::getPublicCssDir()` и
+`getPublicJsDir()`, оба выводятся из `MODULE_ID`. Их читает `register-js.php`,
+их же подразумевает раскладка установщика. Строкой путь больше нигде не пишем:
+разойдутся — файлы лягут в одно место, страница попросит из другого, и выглядеть
+это будет как «стили пропали», а не как ошибка установки. Сходимость проверяет
+`tests/assets_test.php`: он подменяет `CJSCore` заглушкой, подключает настоящий
+`register-js.php` и по карте `installDir` разворачивает публичный путь обратно
+в файл репозитория.
+
+**`register-js.php` обязан быть самодостаточным.** Он выполняется из
+`include.php`, то есть в момент подключения самого модуля, когда на автозагрузку
+классов модуля полагаться нельзя — понадеется и упадёт не кнопка, а весь модуль.
+Поэтому `constants.php` подключается там явным `require_once`, ровно как
+`include.php` подключает `autoload.php`. Тест это закрепляет: уберёшь
+`require_once` — тест падает с fatal, а не молча зеленеет.
 
 Обратите внимание на несимметричные имена: css лежит в `install/css/shef.options/`
 (через точку), js — в `install/js/shef-options/` (через дефис). Так и надо:
@@ -64,6 +76,12 @@ namespace `\Shef\Options\Main\Options\Markdown` живёт под префикс
 не покрыт `installDir`, то есть установщиком никуда не копируется; а
 функциональность правок ядра из модуля уже выносили — см. CHANGELOG, 2.2.4.
 
+**Пакет Composer — `bxshef/options`, тип `bitrix-module`.** Вендор `shef` на
+Packagist занят чужим пакетом (`shef/admin`, Laravel), `bxshef` — свой, там же
+`bxshef/leadfinish`. Тип именно `bitrix-module` плюс
+`extra.installer-name = shef.options`, и это не вкусовщина — см. ловушку ниже.
+Лицензия `MIT` в тон `LICENSE`, почта автора — `offer@bx-shef.by`.
+
 **База — сборка 2.2.16.** Часть файлов взята из более поздней рабочей копии,
 где сборка 2.2.16 потеряла `declare(strict_types=1)`, табы в отступах и саму
 функциональность, заявленную в CHANGELOG для 2.2.16 — параметр `$stopSignal`
@@ -86,6 +104,31 @@ namespace `\Shef\Options\Main\Options\Markdown` живёт под префикс
 grep: `<?` внутри строки или комментария лежит в своём токене, опасный же
 остаётся куском `T_INLINE_HTML`. Наивный grep ловил бы regex в
 `vendor/Michelf/php-markdown`.
+
+**`bitrix-d7-module` развернул бы модуль не туда.** В `composer/installers`
+шаблоны такие:
+
+* `bitrix-module` → `{$bitrix_dir}/modules/{$name}/`
+* `bitrix-d7-module` → `{$bitrix_dir}/modules/{$vendor}.{$name}/`
+
+а `extra.installer-name` в `BaseInstaller::getInstallPath()` подменяет **только**
+`{$name}`, `{$vendor}` не трогает. Для пакета `bxshef/options` это значит:
+
+* `bitrix-module` + `installer-name` → `bitrix/modules/shef.options/` — верно;
+* `bitrix-d7-module` + `installer-name` → `bitrix/modules/bxshef.shef.options/` —
+  каталог, которого Битрикс не знает.
+
+Проверено установкой, а не чтением: оба варианта разворачивались на стенде.
+
+Оговорка: `bitrix-module` помечен в исходниках `composer/installers` как
+`deprecated, remove on the major release`. Поэтому в `require` стоит потолок
+`"composer/installers": "^1.0 || ^2.0"`. Снимут потолок — модуль уедет в чужой
+каталог. Когда выйдет v3, менять придётся осознанно, а не автоматически.
+
+**Проверку машины разработчика в установщике не возвращать.** В `UnInstallFiles()`
+стояло `if($_ENV['COMPUTERNAME'] !== 'SH')` — на машине автора удаление файлов
+пропускалось. В публичном пакете это и след личной машины, и мина: на Linux
+ключа нет, PHP 8 сыплет warning при каждом удалении модуля. Снято.
 
 **`Trait` как сегмент namespace работает.** `Shef\Options\Components\Trait`
 выглядит как зарезервированное слово, но PHP 8 такие сегменты принимает —
@@ -122,23 +165,7 @@ grep: `<?` внутри строки или комментария лежит в
 * `lib/main/tempfile/pid.php`: метод `clearDir()` начинается с `return;` —
   всё тело недостижимо, и вызывается он вхолостую.
 * Часть файлов хранится с CRLF. На работу не влияет, но диффы шумят.
-* `composer.json` правится на шаге «Установка и ассеты», решения владельца
-  уже приняты:
-  * `name`: `shef/options` → `bxshef/options`. Вендор `shef` на Packagist
-    занят чужим пакетом (`shef/admin`, Laravel), `bxshef` — свой, там же
-    лежит `bxshef/leadfinish`.
-  * `type`: `bitrix-d7-module` → `bitrix-module` плюс
-    `extra.installer-name = shef.options`. В `composer/installers`
-    `bitrix-d7-module` разворачивается в `{$bitrix_dir}/modules/{$vendor}.{$name}/`,
-    а `installer-name` подменяет только `{$name}` — вместе они дали бы
-    `bitrix/modules/bxshef.shef.options/`. Нужен `bitrix-module`, у него
-    шаблон `{$bitrix_dir}/modules/{$name}/`.
-  * `bitrix-module` помечен в исходниках `composer/installers` как
-    deprecated с пометкой «remove on the major release», поэтому в `require`
-    обязателен потолок: `"composer/installers": "^1.0 || ^2.0"`. Снимут
-    потолок — модуль уедет в чужой каталог.
-  * `license`: `proprietary` → `MIT`, чтобы сходилось с `LICENSE`.
-  * `authors[].email`: личную почту заменить на `offer@bx-shef.by`.
+
 
 ## Приёмочный чек-лист
 
@@ -156,7 +183,12 @@ grep: `<?` внутри строки или комментария лежит в
 6. Заполнить «Служебный пользователь», сохранить, перезайти — значение на месте.
 7. `/bitrix/css/shef.options/admin-options.css` отдаётся (200), стили на
    странице настроек применились. `/bitrix/modules/shef.options/...` — 403.
+   Путь этот берётся из `Constants::getPublicCssDir()`, сходимость с раскладкой
+   установщика проверяет `tests/assets_test.php`.
 8. Русский текст везде читается: название модуля в списке, описание, подписи
    опций, тексты ошибок установки.
 9. Удалить модуль. Свой подкаталог в `/bitrix/css` и `/bitrix/js` удалён,
    чужие файлы на месте.
+10. Установка через Composer: `composer require bxshef/options` на проекте
+    разворачивает модуль в `bitrix/modules/shef.options/`, а не в `vendor/` и
+    не в `bitrix/modules/bxshef.options/`.
