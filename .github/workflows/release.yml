@@ -38,7 +38,7 @@ jobs:
       - name: Поставить PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.1'
+          php-version: '8.2'
           extensions: mbstring
           coverage: none
 
@@ -141,6 +141,8 @@ jobs:
           PACKAGIST_USERNAME: ${{ secrets.PACKAGIST_USERNAME }}
           PACKAGIST_TOKEN: ${{ secrets.PACKAGIST_TOKEN }}
         run: |
-          curl -sS -X POST -H 'Content-Type: application/json' \
+          # --fail: без него 4xx от Packagist не виден, и шаг зеленеет,
+          # ничего не обновив.
+          curl -sS --fail -X POST -H 'Content-Type: application/json' \
             -d "{\"repository\":{\"url\":\"https://github.com/${GITHUB_REPOSITORY}\"}}" \
             "https://packagist.org/api/update-package?username=${PACKAGIST_USERNAME}&apiToken=${PACKAGIST_TOKEN}"

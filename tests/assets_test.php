@@ -3,18 +3,23 @@
 /**
  * Сходимость публичных путей фронта.
  *
- * Каталог модуля браузеру недоступен, поэтому install/css и install/js
- * раскладываются установщиком в /bitrix/css и /bitrix/js. Путей при этом два:
- * тот, куда установщик кладёт файл, и тот, который страница просит у браузера.
- * Разойдутся — файлы лягут в одно место, страница попросит из другого, и
- * выглядеть это будет как «стили пропали», а не как ошибка установки. На
- * портале такое ловится глазами, здесь — тестом.
+ * Каталог модуля браузеру недоступен, поэтому install/css раскладывается
+ * установщиком в /bitrix/css. Путей при этом два: тот, куда установщик кладёт
+ * файл, и тот, который страница просит у браузера. Разойдутся — файлы лягут в
+ * одно место, страница попросит из другого, и выглядеть это будет как «стили
+ * пропали», а не как ошибка установки. На портале такое ловится глазами,
+ * здесь — тестом.
+ *
+ * Своего JS модуль больше не раскладывает, но getPublicJsDir() остался: по
+ * нему установщик убирает каталог, оставшийся на порталах от версий до 3.0.0.
  *
  * Ядро подменяется заглушкой, классы модуля подключаются настоящие: тест
  * проверяет код модуля, а не свою копию его логики.
  */
 
 $root = dirname(__DIR__);
+
+require_once $root.'/tests/assert.php';
 
 // region Заглушка ядра ////
 /**
@@ -40,41 +45,17 @@ require_once $root.'/register-js.php';
 
 use Shef\Options\Main\Constants;
 
-$errors = [];
-
-$check = static function(string $what, $actual, $expected) use (&$errors): void
-{
-	if($actual === $expected)
-	{
-		printf("  OK   %s = %s\n", $what, var_export($actual, true));
-		return;
-	}
-
-	$errors[] = sprintf(
-		'%s: получено %s, ожидалось %s',
-		$what,
-		var_export($actual, true),
-		var_export($expected, true)
-	);
-	printf("  FAIL %s = %s, ожидалось %s\n", $what, var_export($actual, true), var_export($expected, true));
-};
-
-echo "Публичные пути\n";
+Check::group('публичные пути');
 
 // Дефис в js и точка в css — не опечатка, а требование имён расширений
 // Битрикса. Закрепляем, чтобы это не «починили».
-$check('Constants::getPublicCssDir()', Constants::getPublicCssDir(), '/bitrix/css/shef.options');
-$check('Constants::getPublicJsDir()', Constants::getPublicJsDir(), '/bitrix/js/shef-options');
-
-echo "\nРаскладка install/ -> /bitrix/\n";
+Check::same('Constants::getPublicCssDir()', Constants::getPublicCssDir(), '/bitrix/css/shef.options');
+Check::same('Constants::getPublicJsDir()', Constants::getPublicJsDir(), '/bitrix/js/shef-options');
 
 $settings = require $root.'/.settings.php';
 $installDir = $settings['installDir']['value'] ?? [];
 
-if(!is_array($installDir) || empty($installDir))
-{
-	$errors[] = 'в .settings.php пуст installDir — установщику нечего копировать';
-}
+Check::same('installDir не пуст — установщику есть что копировать', !empty($installDir), true);
 
 /**
  * Обратное отображение публичного пути в исходный файл репозитория по той же
@@ -101,60 +82,41 @@ $toSource = static function(string $publicPath) use ($installDir): null|string
 	return null;
 };
 
-echo "\nИмена каталогов в install/\n";
+Check::group('имена каталогов в install/');
 
 /**
- * Каталог верхнего уровня в install/css и install/js задаёт и путь, по которому
- * файл ляжет, и имя расширения Битрикса: /bitrix/js/shef-options/options-markdown
- * грузится как «shef-options.options-markdown». Переименуют каталог — отвалятся
- * все такие имена, а ошибки установки при этом не будет.
+ * Каталог верхнего уровня в install/css задаёт и путь, по которому файл ляжет,
+ * и имя расширения Битрикса. Переименуют каталог — файлы лягут мимо, а ошибки
+ * установки при этом не будет.
  */
-$dirCheck = static function(string $sourceDir, string $publicDir, string $label) use ($root, &$errors): void
+$topLevelDirs = static function(string $sourceDir) use ($root): array
 {
-	$expected = basename($publicDir);
 	$path = $root.'/'.$sourceDir;
 
 	if(!is_dir($path))
 	{
-		$errors[] = sprintf('%s: каталога %s нет', $label, $sourceDir);
-		printf("  FAIL %s: каталога %s нет\n", $label, $sourceDir);
-		return;
+		return [];
 	}
 
-	foreach(scandir($path) as $entry)
-	{
-		if($entry === '.' || $entry === '..' || !is_dir($path.'/'.$entry))
-		{
-			continue;
-		}
-
-		if($entry === $expected)
-		{
-			printf("  OK   %s/%s\n", $sourceDir, $entry);
-			continue;
-		}
-
-		$errors[] = sprintf(
-			'%s: каталог %s/%s не совпадает с %s — файлы лягут мимо',
-			$label,
-			$sourceDir,
-			$entry,
-			$publicDir
-		);
-		printf("  FAIL %s/%s, ожидался %s\n", $sourceDir, $entry, $expected);
-	}
+	return array_values(array_filter(
+		scandir($path),
+		static fn(string $entry): bool => '.' !== $entry && '..' !== $entry && is_dir($path.'/'.$entry)
+	));
 };
 
-$dirCheck('install/css', Constants::getPublicCssDir(), 'css');
-$dirCheck('install/js', Constants::getPublicJsDir(), 'js');
+Check::same('install/css содержит ровно каталог публичного пути',
+	$topLevelDirs('install/css'), [basename(Constants::getPublicCssDir())]);
 
-echo "\nЗарегистрированные расширения\n";
+// Своего JS в поставке нет — и каталога install/js быть не должно: пустая
+// запись в installDir копировала бы пустоту, а непустая уехала бы мимо всех
+// проверок этого теста.
+Check::same('install/js в репозитории нет', is_dir($root.'/install/js'), false);
 
-if(empty(CJSCore::$registered))
-{
-	$errors[] = 'register-js.php не зарегистрировал ни одного расширения';
-	echo "  FAIL ни одного расширения не зарегистрировано\n";
-}
+Check::group('зарегистрированные расширения');
+
+Check::same('register-js.php зарегистрировал расширение', empty(CJSCore::$registered), false);
+
+$broken = [];
 
 foreach(CJSCore::$registered as $extension => $params)
 {
@@ -167,44 +129,27 @@ foreach(CJSCore::$registered as $extension => $params)
 
 			if(null === $source)
 			{
-				$errors[] = sprintf(
+				$broken[] = sprintf(
 					'%s: путь %s не покрыт ни одной записью installDir — установщик его никуда не положит',
 					$extension,
 					$publicPath
 				);
-				printf("  FAIL %s: %s вне installDir\n", $extension, $publicPath);
 				continue;
 			}
 
 			if(!is_file($root.$source))
 			{
-				$errors[] = sprintf(
+				$broken[] = sprintf(
 					'%s: странице нужен %s, то есть файл %s, а его в репозитории нет',
 					$extension,
 					$publicPath,
 					$source
 				);
-				printf("  FAIL %s: %s -> %s, файла нет\n", $extension, $publicPath, $source);
-				continue;
 			}
-
-			printf("  OK   %s: %s -> %s\n", $extension, $publicPath, $source);
 		}
 	}
 }
 
-echo "\n";
+Check::same('каждый файл расширения лежит там, куда его положит установщик', $broken, []);
 
-if(!empty($errors))
-{
-	echo "Провалено:\n";
-	foreach($errors as $error)
-	{
-		echo '  * '.$error."\n";
-	}
-
-	exit(1);
-}
-
-echo "Пути сходятся.\n";
-exit(0);
+Check::finish();

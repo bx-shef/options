@@ -24,6 +24,5 @@
 |           Option\EnumCrmSource | Для работы со списком из справочника, поддерживает фильтрацию                                                 |
 | Option\EnumCrmSmartProcessType | Для работы со списком типов смарт-процессов, поддерживает фильтрацию                                          |
 |         Option\EnumCrmRqPreset | Для работы со списком пресетов реквизитов, поддерживает фильтрацию                                            |
-|         Option\Markdown\Option | Для вывода данных из документации в формате Markdown                                                          |
 
 [← Installer](docs/2_installer.md) | [↑ Содержание](README.md) | [Работа с пользователями →](docs/4_security.md)

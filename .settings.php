@@ -31,13 +31,7 @@ return [
 		'readonly' => true,
 	],
 	'registerAutoLoadClasses' => [
-		'value' => [
-			'michelf\\markdowninterface' => 'vendor/Michelf/php-markdown/Michelf/MarkdownInterface.php',
-			'michelf\\markdown' => 'vendor/Michelf/php-markdown/Michelf/Markdown.php',
-			'michelf\\markdownextra' => 'vendor/Michelf/php-markdown/Michelf/MarkdownExtra.php',
-			'michelf\\smartypants' => 'vendor/Michelf/php-smartypants/Michelf/SmartyPants.php',
-			'michelf\\smartypantstypographer' => 'vendor/Michelf/php-smartypants/Michelf/SmartyPantsTypographer.php',
-		],
+		'value' => [],
 		'readonly' => true,
 	],
 	'registerNamespace' => [
@@ -61,21 +55,12 @@ return [
 				'customPathUnInstall' => [],
 				'isNeedUnInstall' => true,
 			],
-			[
-				'type' => 'js',
-				'from' => '/install/js',
-				'to' => '/bitrix/js',
-				'customPathUnInstall' => [],
-				'isNeedUnInstall' => true,
-			],
 		],
 		'readonly' => true,
 	],
 	'controllers' => [
 		'value' => [
-			'namespaces' => [
-				'\\Shef\\Options\\Main\\Options\\Markdown' => 'markdown',
-			],
+			'namespaces' => [],
 		],
 		'readonly' => true,
 	]

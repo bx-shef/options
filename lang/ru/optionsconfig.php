@@ -5,8 +5,6 @@ $MESS['shef_trial_action'] = '<a target="_blank" href="https://marketplace.1c-bi
 
 $MESS['shef_options_fail_action'] = 'демо период для модуля <b>#MODULE#</b> закончился. <a target="_blank" href="https://marketplace.1c-bitrix.ru/tobasket.php?ID=#MODULE#">Купить</a>';
 
-$MESS['shef_TAB_DOCS_NAME'] = 'Документация';
-$MESS['shef_TAB_DOCS_TITLE'] = 'Документация модуля';
 
 $MESS['shef_TAB_EXTENSION_NAME'] = 'Настройки PHP';
 $MESS['shef_TAB_EXTENSION_TITLE'] = 'Проблемы настроек PHP';

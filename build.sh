@@ -27,7 +27,6 @@ MODULE_ID='shef.options'
 SHIP=(
 	'.settings.php'
 	'CHANGELOG.md'
-	'CLAUDE.md'
 	'LICENSE'
 	'README.md'
 	'autoload.php'
@@ -43,7 +42,6 @@ SHIP=(
 	'install/'
 	'lang/'
 	'lib/'
-	'vendor/'
 )
 
 # Остаётся в репозитории.
@@ -55,6 +53,7 @@ KEEP=(
 	'.gitattributes'
 	'.github/'
 	'.gitignore'
+	'CLAUDE.md'
 	'CONTRIBUTING.md'
 	'build.sh'
 	'docs/'
@@ -156,9 +155,15 @@ classify()
 }
 
 # Файлы под контролем git — то же, что увидит git archive.
+#
+# core.quotePath=false обязателен: иначе git отдаёт путь с не-ASCII именем
+# закавыченным и в восьмеричных экранированных байтах («"docs/\320\243..."»),
+# и дальше по скрипту такого файла просто нет — ни в списках, ни на диске.
+# Остаток случаев (кавычка, перевод строки, обратный слэш в имени) ловит
+# check_filenames: там имя остаётся закавыченным и с этим разбирается человек.
 tracked_files()
 {
-	git ls-files
+	git -c core.quotePath=false ls-files
 }
 
 ship_files()
@@ -263,11 +268,48 @@ check_gitattributes()
 			fail "в .gitattributes есть export-ignore, которого нет в KEEP: $pattern"
 			bad=1
 		fi
-	done < <(grep -E '[[:space:]]export-ignore([[:space:]]|$)' .gitattributes | awk '{print $1}')
+	done < <(grep -vE '^[[:space:]]*#' .gitattributes \
+		| grep -E '[[:space:]]export-ignore([[:space:]]|$)' \
+		| awk '{print $1}')
 
 	if [ $bad -eq 0 ]
 	then
 		ok ".gitattributes совпадает со списком KEEP (${#KEEP[@]} записей)"
+	fi
+}
+
+# Имя файла, с которым скрипт не справится, и симлинк, который подменяет
+# поставку.
+#
+# Симлинк опасен тем, что каналы поставки расходятся МОЛЧА: cp в build_archive
+# разыменовывает ссылку и кладёт в zip содержимое цели, а git archive кладёт
+# саму ссылку. Обе сверки состава при этом зелёные — они сверяют имена. Так в
+# поставку уезжает файл, которого нет ни в одном списке: хоть KEEP-документ,
+# хоть /etc/hostname.
+check_filenames()
+{
+	local f mode bad=0
+
+	while IFS= read -r f
+	do
+		case "$f" in
+			'"'*)
+				fail "имя файла со спецсимволами, скрипт с ним не справится: $f"
+				bad=1
+				;;
+		esac
+	done < <(tracked_files)
+
+	# git ls-files -s: «<права> <sha> <стадия>\t<путь>», симлинк — 120000.
+	while IFS= read -r f
+	do
+		fail "символическая ссылка под контролем git: $f"
+		bad=1
+	done < <(git -c core.quotePath=false ls-files -s | awk '$1 == "120000" { sub(/^[^\t]*\t/, ""); print }')
+
+	if [ $bad -eq 0 ]
+	then
+		ok 'имена файлов обычные, символических ссылок нет'
 	fi
 }
 
@@ -331,7 +373,8 @@ check_php()
 # синтаксически «правильный», просто в нём нет PHP.
 #
 # Спрашиваем сам PHP, а не grep: «<?» внутри строки или комментария лежит в
-# своём токене, а опасный — остаётся куском T_INLINE_HTML.
+# своём токене, а опасный — остаётся куском T_INLINE_HTML. Наивный grep
+# краснел бы на каждом регулярном выражении вида /<?/ в чужом коде.
 check_short_tags()
 {
 	local f lines bad=0
@@ -364,13 +407,24 @@ check_short_tags()
 	fi
 }
 
+# Пропущенная проверка выглядит как пройденная — поэтому отсутствие node
+# роняет сборку, но только если проверять есть что. Своего JS в модуле сейчас
+# нет; появится — CI обязан его проверять, а не молча зеленеть.
 check_js()
 {
-	local f count=0 bad=0
+	local f count=0 bad=0 total=0
+
+	total="$(tracked_files | grep -c '\.js$' || true)"
+
+	if [ "$total" -eq 0 ]
+	then
+		ok 'JS в репозитории нет — проверять нечего'
+		return
+	fi
 
 	if ! command -v node >/dev/null 2>&1
 	then
-		note 'node не найден — проверка JS пропущена'
+		fail "node не найден, а JS в репозитории есть ($total файлов)"
 		return
 	fi
 
@@ -448,9 +502,31 @@ check_version()
 	ok "версия $version от $date"
 }
 
+# Тест, который не гоняли, не защищает ничего, а выглядит как пройденный.
+# Поэтому здесь сначала считаем, сколько тестов ЕСТЬ, и лишь потом гоняем:
+# несовпадение числа — отказ, а не примечание.
 run_tests()
 {
-	local t count=0 bad=0
+	local t found=0 count=0 bad=0 hasMjs=0
+
+	for t in tests/*_test.php tests/*_test.mjs
+	do
+		[ -e "$t" ] || continue
+		found=$((found + 1))
+		case "$t" in *.mjs) hasMjs=1 ;; esac
+	done
+
+	if [ $found -eq 0 ]
+	then
+		fail 'в tests/ не найдено ни одного *_test.php или *_test.mjs'
+		return
+	fi
+
+	if [ $hasMjs -eq 1 ] && ! command -v node >/dev/null 2>&1
+	then
+		fail 'node не найден, а тесты *_test.mjs в репозитории есть'
+		return
+	fi
 
 	for t in tests/*_test.php
 	do
@@ -463,27 +539,20 @@ run_tests()
 		fi
 	done
 
-	# Фронт тоже под тестами: script.js и script.min.js едут в поставку оба, и
-	# правка одной копии без другой иначе проехала бы молча.
-	if command -v node >/dev/null 2>&1
-	then
-		for t in tests/*_test.mjs
-		do
-			[ -e "$t" ] || continue
-			count=$((count + 1))
-			if ! node "$t"
-			then
-				fail "тест не прошёл: $t"
-				bad=1
-			fi
-		done
-	else
-		note 'node не найден — тесты JS пропущены'
-	fi
+	for t in tests/*_test.mjs
+	do
+		[ -e "$t" ] || continue
+		count=$((count + 1))
+		if ! node "$t"
+		then
+			fail "тест не прошёл: $t"
+			bad=1
+		fi
+	done
 
-	if [ $count -eq 0 ]
+	if [ $count -ne $found ]
 	then
-		note 'тестов в tests/ пока нет'
+		fail "найдено тестов $found, а прогнано $count"
 		return
 	fi
 
@@ -497,6 +566,7 @@ run_checks()
 {
 	echo "Проверки $MODULE_ID"
 	echo
+	check_filenames
 	check_lists
 	check_gitattributes
 	check_encoding
@@ -554,19 +624,27 @@ build_archive()
 
 # То, что отдаст Composer (git archive), обязано совпасть с тем, что уедет
 # в zip. Иначе на портал приедет разное в зависимости от способа установки.
+# Сверяем не HEAD, а ИНДЕКС: git write-tree собирает дерево ровно из того, что
+# видит git ls-files, — то есть из того же, из чего собран список SHIP. Раньше
+# здесь стоял HEAD, и на грязном дереве сверка молча пропускалась. А локально
+# дерево грязное почти всегда, так что единственная проверка, ловящая
+# расхождения самого git archive (вложенный .gitattributes, например),
+# срабатывала только в CI.
 check_composer_package()
 {
-	if [ -n "$(git status --porcelain)" ]
+	local tree
+
+	if ! tree="$(git write-tree 2>/dev/null)"
 	then
-		note 'рабочее дерево грязное — сверка с git archive пропущена'
+		fail 'git write-tree не отдал дерево — незавершённое слияние?'
 		return
 	fi
 
-	if ! diff <(git archive --format=tar HEAD | tar -tf - | grep -v '/$' | sort) \
+	if ! diff <(git archive --format=tar "$tree" | tar -tf - | grep -v '/$' | sort) \
 	          <(ship_files | sort) >/dev/null
 	then
 		fail 'состав Composer-пакета (git archive) разошёлся со списком SHIP'
-		diff <(git archive --format=tar HEAD | tar -tf - | grep -v '/$' | sort) \
+		diff <(git archive --format=tar "$tree" | tar -tf - | grep -v '/$' | sort) \
 		     <(ship_files | sort) | sed 's/^/      /' >&2 || true
 		return
 	fi
@@ -579,6 +657,13 @@ check_composer_package()
 main()
 {
 	cd "$(dirname "$0")"
+
+	if [ $# -gt 1 ]
+	then
+		echo "Лишние аргументы: ${*:2}" >&2
+		echo "Использование: $0 [--check|--version]" >&2
+		return 2
+	fi
 
 	case "${1-}" in
 		--version)

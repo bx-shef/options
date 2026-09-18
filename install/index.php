@@ -1,6 +1,6 @@
 <?php
 
-use Bitrix\Main\Entity\Event;
+use Bitrix\Main\Event;
 use Bitrix\Main\Localization\Loc;
 use Bitrix\Main\EventManager;
 use Bitrix\Main\Application;
@@ -35,7 +35,7 @@ Class shef_options
 	public $PARTNER_URI;
 	
 	/** @var string  */
-	public $PHP_MIN_VER = '8.1.0';
+	public $PHP_MIN_VER = '8.2.0';
 	/** @var string  */
 	public $NEED_MAIN_VERSION = '22.600.300';
 	/** @var array  */
@@ -348,6 +348,29 @@ Class shef_options
 		return $list;
 	}
 	
+	/**
+	 * Публичные каталоги, которые модуль раскладывал раньше, а теперь нет.
+	 *
+	 * Фронт вкладки документации уехал из модуля вместе с самой вкладкой, и
+	 * записи в installDir для него больше нет — значит, при деинсталляции
+	 * удалить /bitrix/js/shef-options стало некому, а на порталах, обновившихся
+	 * с версий до 3.0.0, он лежит.
+	 *
+	 * Путь берём из Constants, а не пишем строкой: он же определял, куда
+	 * установщик его раскладывал. constants.php подключается явно — на
+	 * автозагрузку классов модуля при деинсталляции полагаться нельзя.
+	 *
+	 * @return string[]
+	 */
+	private function getLegacyDirList(): array
+	{
+		require_once __DIR__.'/../lib/main/constants.php';
+		
+		return [
+			\Shef\Options\Main\Constants::getPublicJsDir(),
+		];
+	}
+	
 	public function InstallFiles(array $arParams = []): bool
 	{
 		$docRoot = Application::getDocumentRoot();
@@ -387,6 +410,11 @@ Class shef_options
 		
 		$docRoot = Application::getDocumentRoot();
 		$toPath = $docRoot;
+		
+		foreach($this->getLegacyDirList() as $legacyPath)
+		{
+			\Bitrix\Main\IO\Directory::deleteDirectory($toPath.$legacyPath);
+		}
 		
 		foreach($this->getDirList() as $map)
 		{
