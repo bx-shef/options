@@ -1,5 +1,17 @@
 # change log
 
+## 2.3.0 — 2026-09-18
+* Модуль поставляется только в UTF-8. Перекодировка убрана из установщика, вместо неё в DoInstall() проверка кодировки проекта и отказ ставиться на портал в CP1251
+* Исправлены короткие теги `<?` в def-functions.php и четырёх ainstaller.php: при short_open_tag=Off классы в них не определялись вовсе, а исходник уходил в браузер
+* Возвращён параметр $stopSignal в \Shef\Options\Main\TempFile\Pid::removeByGroup, заявленный в 2.2.16, но в сборку не попавший
+* Из UnInstallFiles() убрана проверка машины разработчика, из-за которой удаление файлов могло пропускаться, а на Linux сыпался warning
+* Публичные пути фронта выведены в Constants::getPublicCssDir() и getPublicJsDir()
+* Ссылки во вкладке «Документация» разбираются по схеме URL: документация переехала в репозиторий, и README ссылается на GitHub
+* Исправлено чтение $options['str_replace'] без проверки в TraitList\Tools\PrepareFields::translit — на PHP 8 каждый вызов без этого ключа давал warning
+* Возвращён declare(strict_types=1) в 14 файлах, потерянный в сборке 2.2.16
+* composer.json: пакет bxshef/options, тип bitrix-module с extra.installer-name, лицензия MIT
+* Документация модуля вынесена из поставки в репозиторий
+
 ## 2.2.16 — 2023-12-09
 * добавлена поддержка сигнала в \Shef\Options\Main\TempFile\Pid::removeByGroup
 
