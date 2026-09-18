@@ -8,4 +8,4 @@
 |                      Utils::getInternalUrl | Возвращает URL сервера                                 |
 | Utils::convertEntityListDepartmentToUserId | Преобразует список департаментов в спиок пользователей |
 
-[← Работа с пользователями](docs/4_security.md) | [↑ Содержание](README.md) | [Работа с компонентами →](docs/6_components.md)
+[← Работа с пользователями](4_security.md) | [↑ Содержание](../README.md) | [Работа с компонентами →](6_components.md)

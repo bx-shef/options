@@ -22,7 +22,7 @@
 |----------------------------------:|:----------------------------------------------------------------------|
 | Strategy\SmartProcessTypeStrategy | Реализует установку типа смарт-процесса                               |
 |        Strategy\CrmPresetStrategy | Реализует установку пресета реквизитов                                |
-|          Strategy\UserFieldConfig | Реализует установку UF через `Bitrix\Main\Controller\UserFieldConfig` |
+|              Strategy\UfStrategy | Реализует установку UF через `Bitrix\Main\Controller\UserFieldConfig` |
 |            Strategy\UfOldStrategy | Реализует установку UF через старые функции                           |
 
 ## [`Installator\Entity`] Сущности
@@ -35,7 +35,6 @@
 | Entity\Crm\ASmartProcessTypeUf | Абстрацкия UF для смартпроцессов                      |
 |             Entity\Crm\APreset | Абстракция для пресетов реквизитов                    |
 |         Entity\Crm\PresetField | Описывает поле пресета реквизита                      |
-|         Entity\Crm\PresetField | Описывает поле пресета реквизита                      |
 |                  **Entity\UF** |                                                       |
 |              Entity\UF\AEntity | Абстрацкия UF                                         |
 |          Entity\UF\AEntityEnum | Абстрацкия UF типа перечисление                       |
@@ -43,7 +42,28 @@
 |          Entity\UF\IEnumStatus | Интерфейс перечисления для статусов                   |
 |          Entity\UF\EEnumStatus | Перечисление для статусов                             |
 |            Entity\UF\EEntityId | Перечисление объектов к которым можно привязать UF    |
+|               Entity\UF\EType | Перечисление типов UF                                |
 |         **Entity\UF\Strategy** | Стратегии получения настроек UF                       |
 |                                | Под каждый тип UF своя стратегия                      |
 
-[↑ Содержание](README.md) | [Опции настроек модуля →](docs/3_options.md)
+## [`Installator\Trait`] Трейты
+
+|                Название | Описание                                                                 |
+|------------------------:|:--------------------------------------------------------------------------|
+| Trait\EntityUfTrait | Перечисление UF сущности для тех, кто реализует `Installator\IEntityUf` |
+
+## Две ветки установки UF — и это не дубль
+
+В модуле живут две независимые реализации, и путать их нельзя:
+
+* `Installator\Entity\UF\*` со стратегиями `Installator\Entity\UF\Strategy\*` —
+  та, что описана выше: сущность несёт своё описание, стратегия под каждый тип
+  UF отдаёт настройки;
+* `Installator\Uf\*` — своя ветка со своим `Installator\Uf\Manager`, типами
+  `Installator\Uf\Type\*` и стратегиями `Installator\Uf\Type\Strategy\*`.
+
+`Strategy\UfOldStrategy` — не «устаревшая копия» `UfStrategy`, а рабочая
+стратегия установки UF через старые функции ядра. Она живёт в новой ветке как
+запасной путь, когда `\Bitrix\Main\Controller\UserFieldConfig` неприменим.
+
+[↑ Содержание](../README.md) | [Опции настроек модуля →](3_options.md)

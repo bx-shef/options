@@ -34,4 +34,4 @@
 Объявляем интерфейс `Components\IAutoloader` и реализуем его через трейты `Components\Trait\ComponentNameTrait` и `Components\Trait\AutoloaderTrait` .
 > Отдельно предусматриваем механизм подключения класса из файла `ajax.php`
 
-[← Утилиты](docs/5_utils.md) | [↑ Содержание](README.md) | [Паттерны →](docs/7_pattern.md)
+[← Утилиты](5_utils.md) | [↑ Содержание](../README.md) | [Паттерны →](7_pattern.md)

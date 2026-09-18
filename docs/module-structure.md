@@ -65,7 +65,14 @@ ajax-контроллер, вендорённый php-markdown и js-расши�
 `Bitrix\Main\Loader` отображает класс в путь **строчными**, разбирая первые два
 сегмента namespace как id модуля: `Shef\Options\Main\Utils` ищется как
 `bitrix/modules/shef.options/lib/main/utils.php`. Отсюда же пустой
-`registerNamespace` в `.settings.php` — он нужен только для чужих namespace.
+`registerNamespace` в `.settings.php` — он нужен только для чужих namespace, а
+своих у модуля нет. Читает этот ключ `autoload.php`.
+
+`project-context.php` выглядит частью той же механики, но ею не является:
+файл объявляет глобальный `ShComposerContext` и едет в поставку, однако в самом
+модуле его никто не подключает — `registerNamespace` задан пустым литералом.
+Это заготовка для модулей линейки, чей `.settings.php` может собрать список
+путей Composer через него.
 
 На macOS заглавная буква сходит с рук, на боевом Linux класс просто не найдётся.
 Проверяется в `build.sh`, `check_lowercase`.
