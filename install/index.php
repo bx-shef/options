@@ -385,48 +385,45 @@ Class shef_options
 			return false;
 		}
 		
-		if($_ENV['COMPUTERNAME'] !== 'SH')
+		$docRoot = Application::getDocumentRoot();
+		$toPath = $docRoot;
+		
+		foreach($this->getDirList() as $map)
 		{
-			$docRoot = Application::getDocumentRoot();
-			$toPath = $docRoot;
-			
-			foreach($this->getDirList() as $map)
+			if($map['isNeedUnInstall'] === false)
 			{
-				if($map['isNeedUnInstall'] === false)
+				continue;
+			}
+			
+			if(
+				isset($map['customPathUnInstall'])
+				&& is_array($map['customPathUnInstall'])
+				&& !empty($map['customPathUnInstall'])
+			)
+			{
+				foreach($map['customPathUnInstall'] as $customPath)
 				{
-					continue;
+					\Bitrix\Main\IO\Directory::deleteDirectory(
+						$toPath.$customPath
+					);
 				}
+			}
+			else
+			{
+				$list = [
+					$this->MODULE_ID,
+					str_replace('.', '-', $this->MODULE_ID)
+				];
 				
-				if(
-					isset($map['customPathUnInstall'])
-					&& is_array($map['customPathUnInstall'])
-					&& !empty($map['customPathUnInstall'])
-				)
+				foreach($list as $moduleId)
 				{
-					foreach($map['customPathUnInstall'] as $customPath)
-					{
-						\Bitrix\Main\IO\Directory::deleteDirectory(
-							$toPath.$customPath
-						);
-					}
-				}
-				else
-				{
-					$list = [
-						$this->MODULE_ID,
-						str_replace('.', '-', $this->MODULE_ID)
-					];
-					
-					foreach($list as $moduleId)
-					{
-						\Bitrix\Main\IO\Directory::deleteDirectory(
-							$toPath.$map['to'].'/'.$moduleId
-						);
-					}
+					\Bitrix\Main\IO\Directory::deleteDirectory(
+						$toPath.$map['to'].'/'.$moduleId
+					);
 				}
 			}
 		}
-		
+
 		return true;
 	}
 	// endregion ////
