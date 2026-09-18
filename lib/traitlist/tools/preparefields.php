@@ -307,7 +307,7 @@ trait PrepareFields
 			'replace_other' => $options['replace_other'] ?? '-'
 		];
 
-		if(is_array($options['str_replace']))
+		if(isset($options['str_replace']) && is_array($options['str_replace']))
 		{
 			$value = str_replace(array_keys($options['str_replace']), array_values($options['str_replace']), $value);
 		}
