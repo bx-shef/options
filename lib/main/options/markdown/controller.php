@@ -6,9 +6,8 @@ use Bitrix\Main\IO\FileNotFoundException;
 use Bitrix\Main\Result;
 use Bitrix\Main\Error;
 use Bitrix\Main\Application;
-use Bitrix\Main\LoaderException;
+use Bitrix\Main\Engine\CurrentUser;
 use Bitrix\Main\IO;
-use Shef\Options\Main;
 use Shef\Options\Components\Actions;
 
 /**
@@ -32,25 +31,31 @@ class Controller
 		];
 	}
 	
+	/**
+	 * Отдаёт разметку документа из каталога модуля.
+	 *
+	 * Оба параметра приходят из браузера, поэтому каждый проверяется: права
+	 * на модуль — здесь, путь — в DocumentPath.
+	 */
 	public function getContentAction(
 		string $url,
 		string $moduleId,
 	): null|array
 	{
-		$filePath = sprintf(
-			'%s/%s',
-			$this->getModulePath($moduleId),
-			$url
-		);
-		
-		$response = $this->getFile($filePath);
-		if(!$response->isSuccess())
+		if(!$this->isAllowed($moduleId))
 		{
-			$this->addErrors($response->getErrors());
+			$this->addError(new Error('Access Denied'));
 			return null;
 		}
 		
-		$response = $this->getPrepareContent($response->getData()['FILE']);
+		$filePath = DocumentPath::resolve($this->getModulesRoot(), $moduleId, $url);
+		if(null === $filePath)
+		{
+			$this->addError(new Error('File Not Exist'));
+			return null;
+		}
+		
+		$response = $this->getPrepareContent(new IO\File($filePath));
 		if(!$response->isSuccess())
 		{
 			$this->addErrors($response->getErrors());
@@ -64,32 +69,33 @@ class Controller
 		];
 	}
 	
-	private function getModulePath(string $moduleId): string
+	/**
+	 * Права проверяются в самом действии, а не только на показ страницы:
+	 * адрес действия виден в коде страницы и вызывается напрямую.
+	 *
+	 * Проверка та же, которой страница настроек модуля пускает к себе, —
+	 * право на сам модуль. Администратору ядро отдаёт «W» и без настроенных
+	 * прав, но полагаться только на это нельзя: $APPLICATION существует не в
+	 * любом окружении.
+	 */
+	private function isAllowed(string $moduleId): bool
 	{
-		return sprintf(
-			'%s/bitrix/modules/%s',
-			Application::getDocumentRoot(),
-			$moduleId
-		);
+		global $APPLICATION;
+		
+		if(CurrentUser::get()->isAdmin())
+		{
+			return true;
+		}
+		
+		return is_object($APPLICATION) && $APPLICATION->GetGroupRight($moduleId) >= 'R';
 	}
 	
-	private function getFile(string $filePath): Result
+	private function getModulesRoot(): string
 	{
-		$result = new Result();
-		
-		$file = new IO\File($filePath);
-		if(!$file->isExists())
-		{
-			return $result->addError(new Error('File Not Exist'));
-		}
-		elseif($file->getExtension() !== 'md')
-		{
-			return $result->addError(new Error('File Not Markdown'));
-		}
-		
-		return $result->setData([
-			'FILE' => $file
-		]);
+		return sprintf(
+			'%s/bitrix/modules',
+			Application::getDocumentRoot()
+		);
 	}
 	
 	/**
