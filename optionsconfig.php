@@ -31,15 +31,13 @@ class ShOptionsConfig
 	private array $requirePhpExt = [];
 	
 	public static function getInstance(
-		string $moduleId,
-		null|string $indexDoc = null
+		string $moduleId
 	): Result
 	{
 		$result = new Result();
 		
 		$options = new static(
-			moduleId: $moduleId,
-			indexDoc: $indexDoc
+			moduleId: $moduleId
 		);
 		
 		$response = $options->init();
@@ -55,8 +53,7 @@ class ShOptionsConfig
 	}
 	
 	protected function __construct(
-		public readonly string $moduleId,
-		public readonly null|string $indexDoc = null
+		public readonly string $moduleId
 	)
 	{
 		$this->tabs = new Dictionary;
@@ -97,7 +94,6 @@ class ShOptionsConfig
 			;
 		}
 		
-		$this->addTab($this->getTabDocs());
 		$this->addTab($this->getTabRequire());
 		
 		return array_values($this->tabs->toArray());
@@ -202,26 +198,6 @@ class ShOptionsConfig
 						$problemsPhpExtension->getErrorMessages()
 					))
 					->setType(Options\TypeUIAlert::Error)
-			)
-		;
-	}
-	// endregion ////
-	
-	// region tab.Docs ////
-	private function getTabDocs(): null|Options\Tab
-	{
-		if(null === $this->indexDoc)
-		{
-			return null;
-		}
-		
-		return (new Options\Tab('DOCS'))
-			->setName(Loc::getMessage('shef_TAB_DOCS_NAME'))
-			->setTitle(Loc::getMessage('shef_TAB_DOCS_TITLE'))
-			->addOption(
-				(new Options\Markdown\Option('DOCS', $this->moduleId))
-					->setRoot('')
-					->setIndex($this->indexDoc)
 			)
 		;
 	}

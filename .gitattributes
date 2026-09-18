@@ -8,6 +8,7 @@
 /.gitattributes		export-ignore
 /.github/		export-ignore
 /.gitignore		export-ignore
+/CLAUDE.md		export-ignore
 /CONTRIBUTING.md	export-ignore
 /docs/			export-ignore
 /build.sh		export-ignore

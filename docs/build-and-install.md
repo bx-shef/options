@@ -20,6 +20,7 @@ CI зовёт **её же**. Это не украшение: если бы се�
 
 | проверка | что ловит |
 |---|---|
+| `check_filenames` | имя, с которым не справится скрипт; символическую ссылку под контролем git |
 | `check_lists` | файл, не попавший ни в SHIP, ни в KEEP |
 | `check_gitattributes` | расхождение KEEP и `export-ignore` — в обе стороны |
 | `check_encoding` | файл не в UTF-8, BOM в начале файла |
@@ -28,10 +29,29 @@ CI зовёт **её же**. Это не украшение: если бы се�
 | `check_js` | `node --check` по всем JS |
 | `check_lowercase` | заглавные буквы в путях `lib/` |
 | `check_version` | пустой или кривой `VERSION`, пустой `VERSION_DATE` |
-| `run_tests` | `tests/*_test.php` |
+| `run_tests` | `tests/*_test.php` (php) и `tests/*_test.mjs` (node) |
+| `check_composer_package` | состав `git archive` разошёлся со списком SHIP |
 
-При сборке дополнительно: состав zip и состав `git archive` сверяются со списком
-SHIP, а первый уровень внутри архива — с `shef.options/`.
+При сборке дополнительно: состав zip сверяется со списком SHIP, а первый
+уровень внутри архива — с `shef.options/`.
+
+### Что здесь сделано «строже, чем хотелось»
+
+**Пропущенная проверка выглядит как пройденная.** Поэтому:
+
+* нет `node`, а JS или `*_test.mjs` в репозитории есть — отказ, а не примечание;
+* `run_tests` сначала считает, сколько тестов ЕСТЬ, и сверяет с числом
+  прогнанных: переименованный файл или тест в подкаталоге иначе выпал бы из
+  прогона молча;
+* `check_composer_package` сверяет **индекс** (`git write-tree`), а не `HEAD`, и
+  потому работает и на грязном дереве. Раньше он на ней пропускался — а локально
+  дерево грязное почти всегда, так что единственная проверка, ловящая
+  расхождения самого `git archive`, срабатывала только в CI.
+
+**Символическая ссылка разводит каналы поставки молча.** `cp` в архив
+разыменовывает её и кладёт содержимое цели, `git archive` кладёт саму ссылку, а
+обе сверки состава при этом зелёные — они сверяют имена. Поэтому ссылок под
+контролем git просто не бывает: `check_filenames` роняет сборку.
 
 ### Про короткие теги отдельно
 
@@ -43,8 +63,8 @@ SHIP, а первый уровень внутри архива — с `shef.opti
 
 Поэтому `check_short_tags` спрашивает сам PHP через `token_get_all()`, а не
 grep: `<?` внутри строки или комментария лежит в своём токене, опасный же
-остаётся куском `T_INLINE_HTML`. Наивный grep ловил бы regex в
-`vendor/Michelf/php-markdown`.
+остаётся куском `T_INLINE_HTML`. Наивный grep краснел бы на каждом регулярном
+выражении вида `/<?/`.
 
 ## Архив
 
@@ -55,7 +75,7 @@ grep: `<?` внутри строки или комментария лежит в
 Сверить поставку двумя путями установки можно так:
 
 ```bash
-git archive --format=tar HEAD | tar -tf - | grep -v '/$' | sort > /tmp/composer.txt
+git archive --format=tar "$(git write-tree)" | tar -tf - | grep -v '/$' | sort > /tmp/composer.txt
 ./build.sh && unzip -Z1 shef.options.zip | grep -v '/$' | sed 's#^shef.options/##' | sort > /tmp/zip.txt
 diff /tmp/composer.txt /tmp/zip.txt    # должно быть пусто
 ```
@@ -66,7 +86,7 @@ diff /tmp/composer.txt /tmp/zip.txt    # должно быть пусто
 
 | задача | что делает |
 |---|---|
-| `PHP 8.1` / `PHP 8.2` / `PHP 8.3` | `./build.sh --check`, `fail-fast: false` |
+| `PHP 8.2` … `PHP 8.5` | `./build.sh --check`, `fail-fast: false` |
 | `Build` | `./build.sh` плюс архив артефактом прогона |
 | `CI` | ворота, `needs: [checks, build]` |
 
@@ -134,6 +154,20 @@ diff /tmp/composer.txt /tmp/zip.txt    # должно быть пусто
 а `installer-name` подменяет только `{$name}`. Для пакета `bxshef/options`
 второй вариант дал бы `bitrix/modules/bxshef.shef.options/` — каталог, которого
 Битрикс не знает.
+
+На стороне проекта-потребителя Composer 2.2+ требует явного разрешения
+плагина, иначе в неинтерактивном режиме (CI) он не отработает и пакет ляжет в
+`vendor/bxshef/options`:
+
+```json
+{
+	"config": {
+		"allow-plugins": {
+			"composer/installers": true
+		}
+	}
+}
+```
 
 `bitrix-module` помечен в исходниках `composer/installers` как `deprecated,
 remove on the major release`, поэтому в `require` стоит потолок

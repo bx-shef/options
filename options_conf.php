@@ -13,8 +13,7 @@ use Shef\Options\Main\Options;
  */
 
 $response = ShOptionsConfig::getInstance(
-	moduleId: 'shef.options',
-	indexDoc: 'README.md'
+	moduleId: 'shef.options'
 );
 if(!$response->isSuccess())
 {

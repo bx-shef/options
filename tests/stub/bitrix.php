@@ -43,6 +43,38 @@ namespace Bitrix\Main\Type
 	}
 }
 
+namespace Bitrix\Main\Config
+{
+	if(!class_exists(Option::class))
+	{
+		/**
+		 * Настройки модуля. Важно не как они хранятся, а что приходит обратно:
+		 * значение опции — всегда строка из формы, и разбирать её приходится
+		 * коду модуля.
+		 */
+		class Option
+		{
+			/** @var array<string, array<string, mixed>> */
+			public static array $values = [];
+
+			public static function set(string $moduleId, string $name, mixed $value): void
+			{
+				static::$values[$moduleId][$name] = $value;
+			}
+
+			public static function forget(string $moduleId, string $name): void
+			{
+				unset(static::$values[$moduleId][$name]);
+			}
+
+			public static function get(string $moduleId, string $name, mixed $default = '', mixed $siteId = false): mixed
+			{
+				return static::$values[$moduleId][$name] ?? $default;
+			}
+		}
+	}
+}
+
 namespace Bitrix\Main\Type\Contract
 {
 	if(!interface_exists(Arrayable::class))
