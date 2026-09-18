@@ -1,0 +1,35 @@
+.adm-workarea .input-select{
+	min-width: 279px;
+}
+.adm-workarea input[type="number"]
+{
+	width: 118px;
+	background: #fff;
+	border: 1px solid;
+	border-color: #87919c #959ea9 #9ea7b1 #959ea9;
+	border-radius: 4px;
+	color: #000;
+	box-shadow: 0 1px 0 0 rgb(255 255 255 / 30%), inset 0 2px 2px -1px rgb(180 188 191 / 70%);
+	display: inline-block;
+	outline: none;
+	vertical-align: middle;
+	-webkit-font-smoothing: antialiased;
+	font-size: 13px;
+	height: 25px;
+	padding: 0 0 0 5px;
+	margin: 0;
+}
+
+.adm-workarea input[type="number"][type=number]::-webkit-inner-spin-button,
+.adm-workarea input[type="number"][type=number]::-webkit-outer-spin-button
+{
+	opacity: 1;
+	width: 14px;
+	height: 30px;
+}
+
+.adm-workarea input[type="number"][type=number]:focus::-webkit-inner-spin-button,
+.adm-workarea input[type="number"][type=number]:hover::-webkit-inner-spin-button {
+	width: 14px;
+	height: 30px;
+}
