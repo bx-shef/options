@@ -40,7 +40,6 @@ SHIP=(
 	'optionsconfig.php'
 	'project-context.php'
 	'register-js.php'
-	'docs/'
 	'install/'
 	'lang/'
 	'lib/'
@@ -48,12 +47,17 @@ SHIP=(
 )
 
 # Остаётся в репозитории.
+#
+# docs/ здесь, а не в SHIP: документация сведена в репозиторий, а README из
+# поставки ссылается на неё адресами GitHub. В поставке остаётся только сам
+# README — его рендерит вкладка «Документация» в настройках модуля.
 KEEP=(
 	'.gitattributes'
 	'.github/'
 	'.gitignore'
 	'CONTRIBUTING.md'
 	'build.sh'
+	'docs/'
 	'tests/'
 )
 
@@ -459,9 +463,27 @@ run_tests()
 		fi
 	done
 
+	# Фронт тоже под тестами: script.js и script.min.js едут в поставку оба, и
+	# правка одной копии без другой иначе проехала бы молча.
+	if command -v node >/dev/null 2>&1
+	then
+		for t in tests/*_test.mjs
+		do
+			[ -e "$t" ] || continue
+			count=$((count + 1))
+			if ! node "$t"
+			then
+				fail "тест не прошёл: $t"
+				bad=1
+			fi
+		done
+	else
+		note 'node не найден — тесты JS пропущены'
+	fi
+
 	if [ $count -eq 0 ]
 	then
-		note 'тестов в tests/*_test.php пока нет'
+		note 'тестов в tests/ пока нет'
 		return
 	fi
 
