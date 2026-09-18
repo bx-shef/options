@@ -23,13 +23,22 @@ abstract class AControllerable
 	/**
 	 * Возвращает фильтры по умолчанию для AJAX запросов
 	 *
+	 * Умолчание — Normal, то есть проверки ядра: аутентификация, метод
+	 * запроса, csrf. Раньше здесь стоял Free, и тогда КАЖДОЕ действие
+	 * наследника, не переопределившего этот метод, отвечало без входа на
+	 * портал и без проверки csrf — включая те, что что-то меняют.
+	 *
+	 * Компоненту, который обязан работать для гостей, Free никуда не делся,
+	 * но выбирают его теперь явно и в одном месте — в configureActions()
+	 * этого компонента.
+	 *
 	 * @see \Shef\Options\Components\Actions\IActionsFilterList
 	 *
 	 * @return array
 	 */
 	public function getConfigureActionsDefFilter(): array
 	{
-		return Actions\Free::get();
+		return Actions\Normal::get();
 	}
 	
 	/**
