@@ -122,10 +122,23 @@ grep: `<?` внутри строки или комментария лежит в
 * `lib/main/tempfile/pid.php`: метод `clearDir()` начинается с `return;` —
   всё тело недостижимо, и вызывается он вхолостую.
 * Часть файлов хранится с CRLF. На работу не влияет, но диффы шумят.
-* `composer.json`: `name` = `shef/options`, хотя вендор `shef` на Packagist
-  занят чужим пакетом; `type` = `bitrix-d7-module`, который развернул бы
-  модуль в `bitrix/modules/bxshef.options/`; `license` = `proprietary` при
-  MIT в `LICENSE`. Правится на шаге «Установка и ассеты».
+* `composer.json` правится на шаге «Установка и ассеты», решения владельца
+  уже приняты:
+  * `name`: `shef/options` → `bxshef/options`. Вендор `shef` на Packagist
+    занят чужим пакетом (`shef/admin`, Laravel), `bxshef` — свой, там же
+    лежит `bxshef/leadfinish`.
+  * `type`: `bitrix-d7-module` → `bitrix-module` плюс
+    `extra.installer-name = shef.options`. В `composer/installers`
+    `bitrix-d7-module` разворачивается в `{$bitrix_dir}/modules/{$vendor}.{$name}/`,
+    а `installer-name` подменяет только `{$name}` — вместе они дали бы
+    `bitrix/modules/bxshef.shef.options/`. Нужен `bitrix-module`, у него
+    шаблон `{$bitrix_dir}/modules/{$name}/`.
+  * `bitrix-module` помечен в исходниках `composer/installers` как
+    deprecated с пометкой «remove on the major release», поэтому в `require`
+    обязателен потолок: `"composer/installers": "^1.0 || ^2.0"`. Снимут
+    потолок — модуль уедет в чужой каталог.
+  * `license`: `proprietary` → `MIT`, чтобы сходилось с `LICENSE`.
+  * `authors[].email`: личную почту заменить на `offer@bx-shef.by`.
 
 ## Приёмочный чек-лист
 
