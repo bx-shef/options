@@ -1,10 +1,7 @@
 # change log
 
-## 2.2.16 — 2023-XX-XX
-* -
-
 ## 2.2.16 — 2023-12-09
-* * добавлена поддержка сигнала в \Shef\Options\Main\TempFile\Pid::removeByGroup
+* добавлена поддержка сигнала в \Shef\Options\Main\TempFile\Pid::removeByGroup
 
 ## 2.2.15 — 2023-12-08
 * Добавлена поддержка временных файлов и pid-файла
