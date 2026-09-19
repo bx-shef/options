@@ -1,7 +1,8 @@
 # Как ведётся этот репозиторий
 
 Файл про процесс, а не про код. Опорные точки модуля, ловушки ядра и приёмочный
-чек-лист — в [CLAUDE.md](CLAUDE.md); раскладка репозитория —
+чек-лист — в [CLAUDE.md](CLAUDE.md), процедура проверки на портале —
+в [docs/portal-check.md](docs/portal-check.md); раскладка репозитория —
 в [docs/module-structure.md](docs/module-structure.md); сборка, CI и релиз —
 в [docs/build-and-install.md](docs/build-and-install.md).
 
