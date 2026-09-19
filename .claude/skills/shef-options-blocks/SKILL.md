@@ -20,11 +20,11 @@ DOCUMENT_ROOT=/var/www/portal php examples/singleton.php    # на портал�
 
 | задача | блок | пример |
 |---|---|---|
-| общий объект с состоянием в пределах запроса | `\Shef\Options\Options\Singleton` | [singleton.php](../../../examples/singleton.php) |
-| разобрали настройку один раз — берут все | `\Shef\Options\Options\Config` | [config.php](../../../examples/config.php) |
-| передать структуру между слоями или модулями | `\Shef\Options\Options\SmartStd` | [smartstd.php](../../../examples/smartstd.php) |
-| агент или cron не должен идти в два экземпляра | `\Shef\Options\Main\TempFile\Pid` | [pid.php](../../../examples/pid.php) |
-| привести вход от человека или из 1С | `\Shef\Options\TraitList\Tools\PrepareFields` | [preparefields.php](../../../examples/preparefields.php) |
+| общий объект с состоянием в пределах запроса | `\Shef\Options\Options\Singleton` | [singleton.php](https://github.com/bx-shef/options/blob/main/examples/singleton.php) |
+| разобрали настройку один раз — берут все | `\Shef\Options\Options\Config` | [config.php](https://github.com/bx-shef/options/blob/main/examples/config.php) |
+| передать структуру между слоями или модулями | `\Shef\Options\Options\SmartStd` | [smartstd.php](https://github.com/bx-shef/options/blob/main/examples/smartstd.php) |
+| агент или cron не должен идти в два экземпляра | `\Shef\Options\Main\TempFile\Pid` | [pid.php](https://github.com/bx-shef/options/blob/main/examples/pid.php) |
+| привести вход от человека или из 1С | `\Shef\Options\TraitList\Tools\PrepareFields` | [preparefields.php](https://github.com/bx-shef/options/blob/main/examples/preparefields.php) |
 
 ## Синглетон
 

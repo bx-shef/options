@@ -1,0 +1,24 @@
+# Навыки линейки shef.*
+#
+# Источник: https://github.com/bx-shef/options, каталог .claude/skills/
+# Здесь — копия. Правят навыки ТОЛЬКО в источнике, сюда их раскладывает
+# sync.sh --to. Правка копии на месте будет затёрта следующей раскладкой,
+# а до неё — поймана проверкой.
+#
+#   .claude/skills/sync.sh --check            целостность копии
+#   .claude/skills/sync.sh --check <источник> сверка с источником
+#
+# Пересобрать в источнике: .claude/skills/sync.sh --manifest
+#
+a8550472776a1e3e5395e49faf39845fe9dce5ccfec0bdcad66773482355fb37  README.md
+8fed1087b7fcf333122dc3edd5e5f2c44285a015055d8faf53da8da200db8ac4  shef-new-agent/SKILL.md
+945196539b93e99e97907c8a68d247dacc4aaba7fe987668dfd16eeede6ca907  shef-new-ajax-action/SKILL.md
+f7aeca5f1f5b8020563d13c2cff6f822e77f09937126a5a252781ccbeb307d0b  shef-new-component/SKILL.md
+6fed1a33d8795f2675c0c0c71635e78bff6e478907073c96a00e0061afb82991  shef-new-module/SKILL.md
+2a03c32474f3fc2143aeb2895fc414d8dc0a3f86e88246ffd4294ecdfda12fd4  shef-new-option/SKILL.md
+7354d5c935421956664a9b743878f79110a12acc7db973d3b341d049f03c021a  shef-options-blocks/SKILL.md
+254ebbf1162a1b5eb4f61e44770d182718865f8eefa9178e7da0fe01fdc547a8  shef-options-components/SKILL.md
+1b43d0d94118575b46d4892b3229e6a5f1b5dff120814fa9b2183a34db93789e  shef-options-installer/SKILL.md
+d967306b9ca8f44e5207225165fe4d12987ea990a03e260f9f6374365f457982  shef-options-settings/SKILL.md
+b8afe1eabb27af148d8094e07a1abd57ba17207aac73cec73988a42a3b684c14  shef-options-traits/SKILL.md
+350d7c94d9d809f188a383206ce14269d0b15b7d09a4fe7ad29e20d891787d5d  sync.sh
