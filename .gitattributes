@@ -5,6 +5,7 @@
 # соберутся по разным правилам. Сверяется автоматически, см. build.sh,
 # check_gitattributes.
 
+/.claude/		export-ignore
 /.gitattributes		export-ignore
 /.github/		export-ignore
 /.gitignore		export-ignore
