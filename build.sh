@@ -57,6 +57,7 @@ KEEP=(
 	'CONTRIBUTING.md'
 	'build.sh'
 	'docs/'
+	'examples/'
 	'tests/'
 )
 

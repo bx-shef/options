@@ -11,5 +11,6 @@
 /CLAUDE.md		export-ignore
 /CONTRIBUTING.md	export-ignore
 /docs/			export-ignore
+/examples/		export-ignore
 /build.sh		export-ignore
 /tests/			export-ignore

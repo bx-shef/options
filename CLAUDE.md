@@ -22,6 +22,15 @@
 | `constants_test.php` | разбор настройки «служебный пользователь» | заглушки |
 | `preparefields_test.php` | трейт `PrepareFields` | заглушки |
 | `smartstd_test.php` | `SmartStd` | заглушки |
+| `examples_test.php` | каждый пример из `examples/` запускается и сходится с обещанным | запускает примеры |
+
+**Примеры в `examples/` запускаются, а не читаются.** Каждый сам сверяет
+обещание с результатом через `check()`; расхождение — ненулевой код возврата.
+Одни и те же файлы идут в двух режимах: `php examples/x.php` — на заглушках
+(так их гоняет CI), `DOCUMENT_ROOT=/var/www/portal php examples/x.php` — на
+живом портале через `Loader::includeModule`. Шапка каждого обязана содержать
+ЦЕЛЬ, ГДЕ ПРИМЕНЯТЬ, ЧТО ДОЛЖНО ПОЛУЧИТЬСЯ и ЗАПУСК — проверяет
+`tests/examples_test.php`.
 
 ## Опорные точки в ядре
 
@@ -119,6 +128,14 @@ js-расширение `install/js/shef-options/options-markdown` и пара `
 Из того же решения: `README.md` едет в поставку как readme пакета, а не потому,
 что его кто-то рендерит. Разметку в нём всё равно не ломать — её показывает
 Packagist.
+
+**Устаревшая пара `lib/singleton.php` + `lib/config.php` удалена.**
+`Shef\Options\Singleton` был единственным местом в репозитории с пометкой
+`@deprecated` — и с указанием замены: `@use \Shef\Options\Options\Singleton`.
+`Shef\Options\Config` наследовал именно его и был строгим подмножеством
+`Options\Config` (без `push()`/`restore()`, без `strict_types`, с `: self`
+вместо `: static`). Ни один файл репозитория их не использовал. Живут
+`lib/options/singleton.php` и `lib/options/config.php`.
 
 **Каталог `lib/main/oldoptions/` не возвращаем.** Тринадцать файлов объявляли
 ровно те же FQCN, что и `lib/main/options/` (`Shef\Options\Main\Options\Tab` и
@@ -258,8 +275,13 @@ warning и notice в провал, потому что иначе PHP 8 их п�
   В поздней рабочей копии файл переписан, но там он реализует
   `Shef\Options\Tests\ITest`, а в нашем дереве есть свой
   `Shef\Options\Integration\Order\Tests\ITest`. Менять интерфейс вслепую нельзя.
-* `lib/main/tempfile/pid.php`: метод `clearDir()` начинается с `return;` —
-  всё тело недостижимо, и вызывается он вхолостую.
+* `lib/main/tempfile/pid.php`: `getFilePath()` зовёт
+  `Manager::addRegisterPath($path, $filePath)`, то есть (каталог, файл), а
+  `Manager::getFileName()` зовёт его же как (файл, каталог). Аргументы
+  переставлены. Последствий сейчас нет — `cleanUp()` на такой записи просто
+  ничего не делает, — но если «починить» порядок, pid-файл станет удаляться в
+  конце скрипта, а это ровно то, чего от блокировки не ждут. Разбираться
+  отдельно и на портале.
 
 
 ## Приёмочный чек-лист
