@@ -92,7 +92,7 @@ final class DealHandler
 ## Приведение входных полей
 
 `PrepareFields` — самый крупный трейт набора, у него [запускаемый
-пример](../../../examples/preparefields.php).
+пример](https://github.com/bx-shef/options/blob/main/examples/preparefields.php).
 
 ```php
 use Shef\Options\TraitList\Tools\PrepareFields;

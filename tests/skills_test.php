@@ -116,4 +116,60 @@ foreach($skills as $path)
 Check::same('frontmatter, имя и описание на месте', $broken, []);
 Check::same('имена не повторяются', count($names), count(array_unique($names)));
 
+Check::group('манифест');
+
+/**
+ * Манифест — список хешей, по которому соседние репозитории сверяют свою
+ * копию навыков с источником. Правка навыка без пересборки манифеста делает
+ * сверку бессмысленной: у получателя всё «совпадает», а навык уже другой.
+ *
+ * Поэтому здесь зовётся сам sync.sh — тот же, что поедет в копию.
+ */
+$sync = $root.'/.claude/skills/sync.sh';
+
+Check::same('sync.sh на месте', is_file($sync), true);
+Check::same('sync.sh исполняемый', is_executable($sync), true);
+Check::same('манифест на месте', is_file($root.'/.claude/skills/MANIFEST'), true);
+
+$output = [];
+$code = 0;
+exec(escapeshellarg($sync).' --check 2>&1', $output, $code);
+
+if(0 !== $code)
+{
+	echo implode(PHP_EOL, $output), PHP_EOL;
+}
+
+Check::same('манифест сходится с навыками', $code, 0);
+
+// Каждый навык обязан быть в манифесте: иначе получатель его не проверит.
+$listed = [];
+
+foreach(file($root.'/.claude/skills/MANIFEST') ?: [] as $line)
+{
+	$line = trim($line);
+
+	if('' === $line || str_starts_with($line, '#'))
+	{
+		continue;
+	}
+
+	$listed[] = preg_split('/\s+/', $line, 2)[1] ?? '';
+}
+
+$missing = [];
+
+foreach($skills as $path)
+{
+	$relative = basename(dirname($path)).'/SKILL.md';
+
+	if(!in_array($relative, $listed, true))
+	{
+		$missing[] = $relative;
+	}
+}
+
+Check::same('каждый навык перечислен в манифесте', $missing, []);
+Check::same('sync.sh перечислен в манифесте', in_array('sync.sh', $listed, true), true);
+
 Check::finish();

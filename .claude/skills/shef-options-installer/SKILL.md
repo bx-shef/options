@@ -10,7 +10,7 @@ description: Установка сущностей CRM из модуля Бит�
 строк в `install/index.php`. Слой `\Shef\Options\Installator` делит задачу на
 две части: **что** ставить (сущность) и **как** ставить (стратегия).
 
-Полный перечень классов — в [docs/2_installer.md](../../../docs/2_installer.md).
+Полный перечень классов — в [docs/2_installer.md](https://github.com/bx-shef/options/blob/main/docs/2_installer.md).
 
 ## Схема
 
