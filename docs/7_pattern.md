@@ -1,5 +1,9 @@
 # [`\Shef\Options\Options`] Паттерны
 
+Запускаемые примеры: [singleton.php](../examples/singleton.php),
+[config.php](../examples/config.php), [smartstd.php](../examples/smartstd.php) —
+как их гонять, написано в [examples/README.md](../examples/README.md).
+
 |             Класс | Описание                                                                            |
 |------------------:|-------------------------------------------------------------------------------------|
 | Options\Singleton | Singleton                                                                           |

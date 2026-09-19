@@ -145,6 +145,20 @@ class Pid
 	}
 	
 	/**
+	 * Путь к своему pid-файлу.
+	 *
+	 * Каталог задаётся группой, имя — префиксом и pid процесса: два процесса
+	 * одной группы получают разные файлы, а один и тот же процесс при
+	 * повторном создании объекта — тот же самый.
+	 *
+	 * @return string
+	 */
+	public function getPath(): string
+	{
+		return $this->getFile()->getPath();
+	}
+	
+	/**
 	 * Возвращает путь к pid-файлу и регистрирует его на удаление
 	 *
 	 * @return string
@@ -176,44 +190,138 @@ class Pid
 		return $filePath;
 	}
 	
-	public function clearDir(IO\File $fileOri): void
+	/**
+	 * Жив ли процесс с таким идентификатором.
+	 *
+	 * Три состояния, и третье здесь главное: true — жив, false — точно нет,
+	 * null — выяснить нечем. Вызывающий обязан различать «нет» и «не знаю»,
+	 * иначе на машине без /proc и без ext-posix чистка снесёт чужие живые
+	 * блокировки.
+	 *
+	 * @param int $pid
+	 * @return bool|null
+	 */
+	protected static function isProcessAlive(int $pid): null|bool
 	{
-		return;
-		$iterator = new \RecursiveIteratorIterator(
-			new \RecursiveDirectoryIterator(
-				$fileOri->getDirectory()->getPath(),
-				\RecursiveDirectoryIterator::SKIP_DOTS | \FilesystemIterator::FOLLOW_SYMLINKS
-			),
-			\RecursiveIteratorIterator::SELF_FIRST
-		);
-		
-		foreach($iterator as $item)
+		if($pid <= 0)
 		{
-			if($item->isFile())
-			{
-				$file = new IO\File($item->getPathname());
-				
-				if($file->getName() === $fileOri->getName())
-				{
-					continue;
-				}
-				
-				if($file->delete())
-				{
-					$list[] = $file->getPath();
-				}
-				
-				unset($file);
-			}
+			return false;
 		}
 		
-		unset($item, $iterator, $list);
+		// Linux: самый прямой ответ, без прав и сигналов.
+		if(is_dir('/proc'))
+		{
+			return is_dir('/proc/'.$pid);
+		}
+		
+		if(
+			extension_loaded('posix')
+			&& function_exists('posix_kill')
+		)
+		{
+			// Сигнал 0 ничего не делает, но проверяет доставимость.
+			if(posix_kill($pid, 0))
+			{
+				return true;
+			}
+			
+			return match(posix_get_last_error())
+			{
+				// EPERM: процесс есть, он просто не наш. Это «жив».
+				1 => true,
+				// ESRCH: такого процесса нет.
+				3 => false,
+				default => null,
+			};
+		}
+		
+		return null;
+	}
+	
+	/**
+	 * Убирает из каталога группы pid-файлы, чей процесс уже не живёт.
+	 *
+	 * Зовётся из add(), и в этом весь смысл: процесс, убитый по -9 или
+	 * упавший по фатальной ошибке, свой pid-файл убрать не успевает. Без
+	 * чистки такая блокировка держит группу вечно, и следующий запуск
+	 * молча не стартует.
+	 *
+	 * Удаляется только то, про что ТОЧНО известно, что процесса нет.
+	 * «Не знаю» (нет ни /proc, ни ext-posix) считается за «жив»: лишний
+	 * невычищенный файл — это задержка до ручного вмешательства, а лишнее
+	 * удаление — два процесса в группе, где должен быть один.
+	 *
+	 * Свой файл не трогается никогда, чужие расширения — тоже: в каталоге
+	 * группы разбираем только *.lock.
+	 *
+	 * Каталог просматривается без рекурсии: pid-файлы группы лежат в нём
+	 * плоско, а спуск вглубь означал бы удаление в чужих каталогах.
+	 *
+	 * @param IO\File $fileOri свой pid-файл — его и только его оставляем
+	 *
+	 * @return string[] пути удалённых файлов
+	 */
+	public function clearDir(IO\File $fileOri): array
+	{
+		$removed = [];
+		
+		$directory = $fileOri->getDirectory()->getPath();
+		
+		if(!is_dir($directory))
+		{
+			return $removed;
+		}
+		
+		foreach(new \DirectoryIterator($directory) as $item)
+		{
+			if(
+				$item->isDot()
+				|| !$item->isFile()
+			)
+			{
+				continue;
+			}
+			
+			$file = new IO\File($item->getPathname());
+			
+			if($file->getName() === $fileOri->getName())
+			{
+				continue;
+			}
+			
+			if($file->getExtension() !== 'lock')
+			{
+				continue;
+			}
+			
+			// Удаляем, только когда процесса ТОЧНО нет: true и null оставляем.
+			if(false !== static::isProcessAlive((int)trim($file->getContents())))
+			{
+				continue;
+			}
+			
+			if($file->delete())
+			{
+				$removed[] = $file->getPath();
+			}
+			
+			unset($file);
+		}
+		
+		unset($item);
+		
+		return $removed;
 	}
 
 	/**
-	 * Создает pid-файл
+	 * Создаёт pid-файл текущего процесса.
 	 *
-	 * @return bool
+	 * Перед созданием убирает из каталога группы блокировки мёртвых
+	 * процессов — @see clearDir(). Повторный вызов из того же процесса
+	 * ничего не делает и возвращает true: имя файла содержит pid, то есть
+	 * свой файл процесс узнаёт по имени.
+	 *
+	 * @return bool false — записать файл не удалось
 	 */
 	public function add(): bool
 	{
