@@ -23,6 +23,16 @@
 | `preparefields_test.php` | трейт `PrepareFields` | заглушки |
 | `smartstd_test.php` | `SmartStd` | заглушки |
 | `examples_test.php` | каждый пример из `examples/` запускается и сходится с обещанным | запускает примеры |
+| `skills_test.php` | у каждого skill есть frontmatter, имя по каталогу и описание | не нужно |
+
+**Skills лежат в `.claude/skills/`** — по одному каталогу на тему, внутри
+`SKILL.md` с frontmatter (`name` строго по имени каталога, `description` —
+единственное, по чему skill находят). Их пять: `shef-options-blocks`,
+`shef-options-traits`, `shef-options-components`, `shef-options-settings`,
+`shef-options-installer`. Оформление проверяет `tests/skills_test.php`, а
+содержимое — `tests/docs_test.php`: каждый класс, названный в skill, обязан
+существовать, иначе тест краснеет. Это и есть защита от skill, который
+рассказывает про переименованный класс.
 
 **Примеры в `examples/` запускаются, а не читаются.** Каждый сам сверяет
 обещание с результатом через `check()`; расхождение — ненулевой код возврата.

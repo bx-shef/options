@@ -1,0 +1,119 @@
+<?php declare(strict_types=1);
+
+/**
+ * Skills: агент читает их вместо того, чтобы разбираться в модуле заново.
+ *
+ * Skill подключается по описанию: модель сравнивает задачу с полем
+ * description и решает, брать ли файл. Поэтому пустое или общее описание —
+ * это не «менее удобно», а «skill не сработает никогда», и заметить это
+ * нечем: ошибки нет, просто агент пишет своё.
+ *
+ * Здесь проверяется оформление: frontmatter на месте, имя совпадает с
+ * каталогом, описание непустое и одной строкой. Содержимое проверяет
+ * tests/docs_test.php — там же, где остальную документацию: каждый класс,
+ * названный в skill, обязан существовать.
+ */
+
+$root = dirname(__DIR__);
+
+require_once $root.'/tests/assert.php';
+
+$skills = glob($root.'/.claude/skills/*/SKILL.md') ?: [];
+sort($skills);
+
+Check::group('состав');
+
+Check::same('skills нашлись', count($skills) > 0, true);
+
+/**
+ * Разбор frontmatter: три дефиса, строки «ключ: значение», три дефиса.
+ * Полноценный YAML здесь не нужен и не заводится — лишняя зависимость ради
+ * двух полей.
+ *
+ * @return array<string, string>
+ */
+$frontmatter = static function(string $text): array
+{
+	if(!preg_match('/\A---\R(.*?)\R---\R/su', $text, $matches))
+	{
+		return [];
+	}
+
+	$fields = [];
+
+	foreach(preg_split('/\R/u', $matches[1]) ?: [] as $line)
+	{
+		if(!preg_match('/^([a-z_]+):\s*(.+)$/u', $line, $pair))
+		{
+			continue;
+		}
+
+		$fields[$pair[1]] = trim($pair[2]);
+	}
+
+	return $fields;
+};
+
+Check::group('оформление');
+
+$broken = [];
+$names = [];
+
+foreach($skills as $path)
+{
+	$directory = basename(dirname($path));
+	$text = file_get_contents($path);
+	$fields = $frontmatter($text);
+
+	if(empty($fields))
+	{
+		$broken[] = $directory.': нет frontmatter';
+		continue;
+	}
+
+	$name = $fields['name'] ?? '';
+	$description = $fields['description'] ?? '';
+
+	if($name === '')
+	{
+		$broken[] = $directory.': нет поля name';
+	}
+	elseif($name !== $directory)
+	{
+		$broken[] = sprintf('%s: name = «%s», а каталог другой', $directory, $name);
+	}
+	elseif(1 !== preg_match('/^[a-z0-9-]+$/', $name))
+	{
+		$broken[] = sprintf('%s: name не из [a-z0-9-]', $directory);
+	}
+	else
+	{
+		$names[] = $name;
+	}
+
+	// Описание — единственное, по чему skill находят. Одной строкой:
+	// перенос обрывает разбор frontmatter на полуслове.
+	if($description === '')
+	{
+		$broken[] = $directory.': нет поля description';
+	}
+	elseif(mb_strlen($description) < 80)
+	{
+		$broken[] = sprintf('%s: описание короче 80 символов — по нему не выбрать', $directory);
+	}
+	elseif(mb_strlen($description) > 1024)
+	{
+		$broken[] = sprintf('%s: описание длиннее 1024 символов', $directory);
+	}
+
+	// Заголовок нужен человеку, открывшему файл.
+	if(!preg_match('/^#\s+\S/mu', $text))
+	{
+		$broken[] = $directory.': нет заголовка';
+	}
+}
+
+Check::same('frontmatter, имя и описание на месте', $broken, []);
+Check::same('имена не повторяются', count($names), count(array_unique($names)));
+
+Check::finish();
