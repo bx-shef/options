@@ -11,8 +11,9 @@ description: Компоненты и ajax в модулях линейки shef.
 ## Обычный компонент
 
 `\Shef\Options\Components\AComponent` — наследник `\CBitrixComponent` с
-готовым жизненным циклом. Вам остаётся `process()`, всё остальное —
-переопределяемые крючки.
+готовым жизненным циклом. Вам остаются `process()` и `getModulesList()` —
+второй абстрактный, его требует трейт `\Shef\Options\TraitList\Modules`.
+Всё остальное — переопределяемые крючки.
 
 ```php
 use Shef\Options\Components\AComponent;

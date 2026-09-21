@@ -27,8 +27,12 @@ class ShefDemoOrderListComponent extends \Shef\Options\Components\AControllerabl
         ];
     }
 
-    public function loadAction(int $id): array
+    // Тип возврата ОБЯЗАН допускать null: действие, вернувшее ошибку,
+    // возвращает именно его. Объявите `: array` — и отказ в доступе
+    // свалится в TypeError вместо ответа с ошибкой.
+    public function loadAction(int $id): null|array
     {
+        // isAllowed() пишете вы: у базового класса такого метода нет.
         if(!$this->isAllowed($id))
         {
             $this->addError(new \Bitrix\Main\Error('Access Denied'));

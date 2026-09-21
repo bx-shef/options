@@ -5,7 +5,7 @@ description: Готовые механики для классов модуля 
 
 # Набор трейтов
 
-`lib/traitlist/` — восемнадцать трейтов. Половина из них нужна почти в каждом
+`lib/traitlist/` — девятнадцать трейтов. Половина из них нужна почти в каждом
 классе линейки, поэтому смотреть сюда стоит **до** того, как писать своё.
 
 Трейты подключаются в класс обычным `use`. Часть методов `protected`: они
@@ -19,7 +19,7 @@ description: Готовые механики для классов модуля 
 | `\Shef\Options\TraitList\Modules` | `includeModules()` по списку из `getModulesList()` | класс зависит от чужих модулей |
 | `\Shef\Options\TraitList\Events` | `disableHandler()` / `enableHandler()` / `isEnabledHandler()` | обработчик события правит сущность и снова вызывает сам себя |
 | `\Shef\Options\TraitList\EventResponse` | возврат значений из обработчиков событий | обработчик обязан что-то вернуть ядру |
-| `\Shef\Options\TraitList\Log` | `log()` в файл, который задаёт сам класс | нужен след работы |
+| `\Shef\Options\TraitList\Log` | `log()` в файл, который задаёт сам класс — **по умолчанию молчит**, см. ниже | нужен след работы |
 | `\Shef\Options\TraitList\Tools\ErrorCollection` | `addError()`, `getErrors()`, `getErrorCollection()` | класс обязан копить ошибки, а не бросать первую |
 | `\Shef\Options\TraitList\Tools\PrepareFields` | разбор и проверка входных полей | вход от человека или чужой системы |
 | `\Shef\Options\TraitList\Tools\DateTime` | `getCurDateTime()` / `setCurDateTime()` — одно «сейчас» на весь объект | в одном прогоне все записи должны получить одинаковое время |
@@ -34,6 +34,7 @@ description: Готовые механики для классов модуля 
 | `\Shef\Options\TraitList\Constants\Site` | `getBaseSiteId()` | многосайтовость |
 | `\Shef\Options\TraitList\Constants\User` | `getSystemUserId()` — из настроек модуля | работа от имени системы |
 | `\Shef\Options\TraitList\Security\FixUser` | подмена текущего пользователя | агент или cron работает от имени пользователя |
+| `\Shef\Options\TraitList\UF\Entity` | словарь пользовательских полей сущности, создание недостающих | класс описывает набор UF и должен их завести |
 
 ## Подключение модулей
 
@@ -56,6 +57,24 @@ final class Importer
 `Security\FixUser` (`getInitedUserId()`) и `Constants\Catalog`
 (`getModuleId()`): трейт спрашивает у класса то, чего сам знать не может. `includeModules()` возвращает `\Bitrix\Main\Result` с ошибкой на
 первом незагрузившемся модуле, а не бросает исключение.
+
+## `Log` по умолчанию не пишет ничего
+
+Трейт подключили, `static::log([...])` позвали, в логе пусто и ни одной
+ошибки. Так и задумано: `isSkipLog()` в трейте возвращает `true`, и `log()`
+выходит, не дойдя до записи.
+
+Включают одним из двух способов:
+
+```php
+protected static function isSkipLog(): bool { return false; }   // насовсем
+static::log($value, true);                                      // разово
+```
+
+Заодно переопределите `getLogFile()` — умолчание у него общее на всех
+(`shef-options-trait-list-Events`), и ваши записи лягут в чужой файл. Пишет
+он через `_log()` в `<DOCUMENT_ROOT>/local/log/`, каталог должен
+существовать.
 
 ## Защита обработчика от самого себя
 
