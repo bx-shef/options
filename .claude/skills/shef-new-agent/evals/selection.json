@@ -1,0 +1,7 @@
+[
+ {"input":"сделай агент импорта прайса раз в час","expected":"shef-new-agent"},
+ {"input":"нужно по ночам пересчитывать остатки на складах","expected":"shef-new-agent"},
+ {"input":"раз в сутки выгружать новые заказы в csv на ftp","expected":"shef-new-agent"},
+ {"input":"добавь ajax-метод сохранения формы","expected":"shef-new-ajax-action","notes":"сосед"},
+ {"input":"поправь опечатку в lang-файле модуля","expected":"<none>"}
+]

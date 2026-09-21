@@ -1,0 +1,7 @@
+[
+ {"input":"цена приходит строкой «1 234,50», нужно правильно разобрать поля заявки","expected":"shef-options-traits"},
+ {"input":"агент должен работать от служебного пользователя и возвращать текущего после","expected":"shef-options-traits"},
+ {"input":"как логировать из модуля по канону линейки","expected":"shef-options-traits"},
+ {"input":"сделай компонент таблицы товаров","expected":"shef-new-component","notes":"сосед"},
+ {"input":"обнови версию php в docker","expected":"<none>"}
+]

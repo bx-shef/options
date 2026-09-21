@@ -1,0 +1,7 @@
+[
+ {"input":"добавь в настройки модуля поле «ID склада по умолчанию»","expected":"shef-new-option"},
+ {"input":"нужна вкладка Обмен в настройках модуля с двумя полями","expected":"shef-new-option"},
+ {"input":"вынеси url внешнего api в опции модуля","expected":"shef-new-option"},
+ {"input":"создай модуль acme.sync с нуля","expected":"shef-new-module","notes":"сосед"},
+ {"input":"переименуй переменную в шаблоне","expected":"<none>"}
+]
