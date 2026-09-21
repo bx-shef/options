@@ -1,0 +1,7 @@
+[
+ {"input":"создай новый модуль acme.demo","expected":"shef-new-module"},
+ {"input":"нужен скелет модуля для интеграции с телефонией","expected":"shef-new-module"},
+ {"input":"заведи модуль под обмен с 1С, пока пустой","expected":"shef-new-module"},
+ {"input":"добавь в настройки модуля поле с id склада","expected":"shef-new-option","notes":"сосед"},
+ {"input":"объясни, что делает класс Bitrix\\Main\\Result","expected":"<none>"}
+]

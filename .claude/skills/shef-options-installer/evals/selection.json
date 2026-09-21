@@ -1,0 +1,7 @@
+[
+ {"input":"при установке модуля создай пользовательское поле UF_ACME_CODE у сделки","expected":"shef-options-installer"},
+ {"input":"модуль должен при установке заводить смарт-процесс Заявки со стадиями","expected":"shef-options-installer"},
+ {"input":"нужно чтобы установщик добавлял пресет полей в CRM","expected":"shef-options-installer"},
+ {"input":"сделай агент очистки старых логов","expected":"shef-new-agent","notes":"сосед"},
+ {"input":"почини css в шаблоне сайта","expected":"<none>"}
+]

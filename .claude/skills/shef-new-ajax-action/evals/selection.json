@@ -1,0 +1,7 @@
+[
+ {"input":"добавь ajax-действие отмены заказа по ID, только для владельца","expected":"shef-new-ajax-action"},
+ {"input":"нужен контроллер с методом сохранения формы заявки","expected":"shef-new-ajax-action"},
+ {"input":"фронт шлёт запрос на добавление в избранное — сделай серверную часть","expected":"shef-new-ajax-action"},
+ {"input":"сделай компонент для вывода корзины","expected":"shef-new-component","notes":"сосед"},
+ {"input":"напиши README для модуля","expected":"<none>"}
+]

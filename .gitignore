@@ -8,6 +8,10 @@ composer.lock
 /bitrix-version-builder
 
 *.log
+
+# Отзывы о навыках: их пишет агент по shef-feedback, в репозиторий они не едут.
+# Без этой строки первый же git add -A роняет check_lists в build.sh.
+/.bitrixsh/
 install/**/*.min.min.*
 
 # собирается build.sh

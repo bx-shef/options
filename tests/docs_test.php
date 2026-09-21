@@ -156,7 +156,16 @@ foreach($markdown as $file)
 	$text = file_get_contents($root.'/'.$file);
 
 	// 4. FQCN в обратных кавычках, с методом или без.
-	preg_match_all('/`\\\\?('.preg_quote(VENDOR_PREFIX, '/').'[A-Za-z0-9_\\\\]+(?:::[A-Za-z0-9_]+)?)`/u', $text, $matches);
+	//
+	// Скобки после имени метода необязательны и в имя не входят: в тексте
+	// метод пишут и как `Класс::метод`, и как `Класс::метод()`. Вторая форма
+	// встречается чаще, и пока её не разбирали, шесть упоминаний в навыках и
+	// документации не проверялись вовсе.
+	preg_match_all(
+		'/`\\\\?('.preg_quote(VENDOR_PREFIX, '/').'[A-Za-z0-9_\\\\]+(?:::[A-Za-z0-9_]+)?)(?:\(\))?`/u',
+		$text,
+		$matches
+	);
 
 	foreach(array_unique($matches[1]) as $reference)
 	{

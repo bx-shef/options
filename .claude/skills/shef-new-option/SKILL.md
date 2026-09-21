@@ -1,6 +1,6 @@
 ---
 name: shef-new-option
-description: Добавить опцию на страницу настроек модуля Битрикс линейки shef.* — выбрать тип (строка, число, флажок, перечисление, пользователи, отделы, справочники CRM), объявить в options_conf.php, добавить подписи в языковой файл и правильно прочитать сохранённое значение в коде. Вызывать, когда модулю нужна новая настройка в административном разделе.
+description: Добавить новую настройку (опцию) или новую вкладку с настройками в модуль линейки shef.*: выбрать тип поля (строка, число, флажок, перечисление, пользователи, отделы, справочники CRM), объявить в options_conf.php, добавить подписи в языковой файл, прочитать сохранённое значение в коде. Брать на любую задачу «добавь в настройки модуля поле/вкладку/параметр», «вынеси URL/ключ/ID в опции модуля». Не про создание самого модуля.
 ---
 
 # Новая опция настроек
@@ -37,19 +37,46 @@ description: Добавить опцию на страницу настроек 
 
 ## 2. Объявить в `options_conf.php`
 
+Развилка: вкладка уже есть или вы заводите новую. Перепутать здесь дорого.
+
+### Опция на СУЩЕСТВУЮЩУЮ вкладку
+
+```php
+$options->getTab('DEF')?->addOption(
+    (new Options\Text('apikey'))
+        ->setTitle(Loc::getMessage($options->moduleId.'_TAB_DEF_apikey'))
+        ->setDescription(Loc::getMessage($options->moduleId.'_TAB_DEF_apikey_descr'))
+        ->setDefValue('')
+);
+```
+
+**Именно `getTab()`, а не второй `addTab()`.** Вкладки хранятся по коду
+(`ShOptionsConfig::addTab()` кладёт в словарь с ключом `$tab->getCode()`), и
+второй `addTab(new Tab('DEF'))` не добавит опцию к существующей вкладке, а
+**заменит вкладку целиком** — все объявленные до этого опции исчезнут со
+страницы. Ошибки не будет: поля просто пропадут, а сохранённые значения
+останутся висеть в базе под своими именами.
+
+### Новая вкладка
+
 ```php
 $options->addTab(
-    (new Options\Tab('DEF'))
-        ->setName(Loc::getMessage($options->moduleId.'_TAB_DEF_NAME'))
-        ->setTitle(Loc::getMessage($options->moduleId.'_TAB_DEF_TITLE'))
+    (new Options\Tab('EXCHANGE'))
+        ->setName(Loc::getMessage($options->moduleId.'_TAB_EXCHANGE_NAME'))
+        ->setTitle(Loc::getMessage($options->moduleId.'_TAB_EXCHANGE_TITLE'))
         ->addOption(
             (new Options\Text('apikey'))
-                ->setTitle(Loc::getMessage($options->moduleId.'_TAB_DEF_apikey'))
-                ->setDescription(Loc::getMessage($options->moduleId.'_TAB_DEF_apikey_descr'))
-                ->setDefValue('')
+                ->setTitle(Loc::getMessage($options->moduleId.'_TAB_EXCHANGE_apikey'))
+        )
+        ->addOption(
+            (new Options\Text('url'))
+                ->setTitle(Loc::getMessage($options->moduleId.'_TAB_EXCHANGE_url'))
         )
 );
 ```
+
+Код вкладки (`EXCHANGE`) войдёт в имена всех её настроек — см. следующий шаг.
+Поэтому придумывайте его один раз и навсегда.
 
 ## 3. Понять, как будет называться настройка
 
@@ -92,9 +119,16 @@ $userId = (int)Option::get('shef.demo', 'DEF_userid');
 | `'05'` | `5` | то же самое |
 
 Ни одного предупреждения в логе. Разбирайте строго: целое больше нуля либо
-строка из одних цифр, иначе умолчание. Готовый разбор для служебного
-пользователя — `\Shef\Options\Main\Constants::getSystemUserId()`, для полей
-вообще — трейт `\Shef\Options\TraitList\Tools\PrepareFields`.
+строка из одних цифр **без ведущего нуля**, иначе умолчание. Последнее не
+придирка: `ctype_digit('05')` истинно, и без этой оговорки `'05'` пройдёт и
+даст те же `5`. В коде модуля правило записано как `/^[1-9][0-9]*$/`
+(`\Shef\Options\Main\Constants::getSystemUserId`), и тест на него есть.
+
+Готовый разборщик для ЧУЖОЙ опции взять неоткуда:
+`Constants::getSystemUserId()` читает жёстко свой модуль и свою опцию
+`DEF_systemuserid`, для настройки вашего модуля он не подойдёт — смотрите на
+него как на образец, а не как на функцию. Для полей вообще — трейт
+`\Shef\Options\TraitList\Tools\PrepareFields`.
 
 Для `Checkbox` сравнивайте с `'Y'`, а не приводите к `bool`: строка `'N'`
 приводится к `true`.
@@ -105,7 +139,9 @@ $userId = (int)Option::get('shef.demo', 'DEF_userid');
 
 ## 6. Проверка
 
-1. Опция появилась на странице, подпись и описание по-русски.
+1. Опция появилась на странице, подпись и описание по-русски. **Проверьте,
+   что соседние опции этой вкладки никуда не делись** — это главный симптом
+   лишнего `addTab()`.
 2. Заполнить, сохранить, перезайти — значение на месте.
 3. **Очистить поле, сохранить** — код, который его читает, не падает и не
    начинает работать от нуля.

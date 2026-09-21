@@ -44,7 +44,7 @@ Composer разворачивает в целевой каталог **коре�
 | `build.sh` | KEEP | сборка и проверки |
 | `tests/` | KEEP | тесты |
 | `examples/` | KEEP | запускаемые примеры к строительным блокам |
-| `.claude/skills/` | KEEP | навыки агента (источник для всей линейки) плюс `sync.sh` и `MANIFEST` |
+| `.claude/skills/` | KEEP | навыки агента (источник для всей линейки) плюс `evals/` внутри навыков, `sync.sh` и `MANIFEST` |
 | `.github/` | KEEP | CI и релиз |
 | `CONTRIBUTING.md` | KEEP | |
 | `CLAUDE.md` | KEEP | памятка агенту: она про репозиторий, а не про модуль |

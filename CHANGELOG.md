@@ -1,5 +1,12 @@
 # change log
 
+## 3.0.1 — 2026-09-21
+* Код модуля не менялся: состав поставки совпадает с 3.0.0 файл в файл, а содержимым различаются только CHANGELOG.md и install/version.php. Версия поднята, чтобы у навыков и evals был номер, на который можно сослаться
+* .claude/skills/ — evals/selection.json у операционных навыков, трейтов и установщика: фразы, по которым навык должен выбираться. Описания shef-options-traits, shef-new-option, shef-options-settings, shef-new-component переписаны под задачу, а не под содержание: на них модель промахивалась
+* .claude/skills/shef-feedback — навык-отзыв: агент после задачи записывает, чего в навыке не хватило или что было неверно, в .bitrixsh/feedback/
+* .claude/skills/README.md — правила заведения нового навыка: имя, описание под задачу с границей и пределом 1024 символа, evals для операционных
+* tests/evals_test.php — оформление evals
+
 ## 3.0.0 — 2026-09-18
 * Несовместимо: из модуля убран markdown-блок целиком — вкладка «Документация», ajax-контроллер Main\Options\Markdown, класс Options\Markdown\Option, параметр indexDoc у ShOptionsConfig::getInstance(), вендорённый vendor/Michelf (php-markdown и php-smartypants) и js-расширение install/js/shef-options/options-markdown. Документация живёт в репозитории, в поставке остаётся README как readme пакета
 * Несовместимо: удалён каталог lib/main/oldoptions/ — 13 файлов объявляли те же FQCN, что и lib/main/options/, но лежали не там, где их ищет автозагрузка. Ядро брало options/, oldoptions/ не брал никто, а на портал каталог ехал

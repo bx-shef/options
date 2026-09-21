@@ -1,0 +1,7 @@
+[
+ {"input":"сделай компонент со списком заказов текущего пользователя","expected":"shef-new-component"},
+ {"input":"нужен компонент для вывода отзывов на странице товара","expected":"shef-new-component"},
+ {"input":"выведи на главной блок с последними новостями компонентом","expected":"shef-new-component"},
+ {"input":"обработчик кнопки отмена заказа через ajax","expected":"shef-new-ajax-action","notes":"сосед"},
+ {"input":"обнови composer-зависимости проекта","expected":"<none>"}
+]
