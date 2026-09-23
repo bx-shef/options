@@ -43,25 +43,52 @@ $items = OrderList::forUser($userId, 20);
 
 `\Shef\Options\Components\Builder` — обёртка над подключением компонента:
 
+Два разных употребления, и параметры доходят только до одного из них.
+
+**Вывод на странице** — компонент отрабатывает целиком, параметры доходят:
+
 ```php
 use Shef\Options\Components\Builder;
 
-$builder = (new Builder('acme.demo:order.list'))
+(new Builder('acme.demo:order.list'))
     ->setTemplate('')
     ->addOptionCollection('COUNT', 20)
-    ->setParent($this);          // если зовёте из другого компонента
-
-$builder->include();             // обычный вывод на странице
-$builder->includeSlider();       // в слайдере
-$builder->includeSmart();        // сам решит, слайдер или страница
-$component = $builder->buildClass();   // объект класса компонента, без выполнения
+    ->setParent($this)           // если зовёте из другого компонента
+    ->include();                 // includeSlider() — в слайдере,
+                                 // includeSmart() — сам решит, что уместно
 ```
 
-`buildClass()` создаёт объект, инициализирует имя, шаблон и автозагрузку —
-и **не** выполняет `executeComponent()`. Вывода нет. Дальше зовёте у объекта
-его публичный метод, который отдаёт данные. Если такого метода у компонента
-нет — добавьте его в компонент (публичный, без вывода), а не оборачивайте
-`executeComponent()` буфером.
+**Только данные** — объект компонента без выполнения:
+
+```php
+/** @var \AcmeDemoOrderListComponent $component */
+$component = (new Builder('acme.demo:order.list'))
+    ->setTemplate('')
+    ->buildClass();
+
+$items = $component->getItems($userId, 20);   // ваш публичный метод
+```
+
+`buildClass()` создаёт объект, зовёт `initComponent()` (имя и шаблон) и, если
+компонент реализует `IAutoloader`, — `initAutoloader()`. Всё. Вывода нет,
+`executeComponent()` не выполняется, шаблон не подключается.
+
+**Параметры `buildClass()` не передаёт** — так и написано в докблоке метода
+(`@memo Параметры не передаются`). `addOptionCollection()` уезжает в компонент
+только через `include()` и `includeSlider()`. Вместе с этим не выполняется
+ничего из жизненного цикла: ни `initParams()`, ни `checkRequiredParams()`, ни
+`includeModules()`.
+
+Отсюда два следствия для публичного метода, который вы зовёте:
+
+* он принимает свои аргументы **сам**, на `$this->arParams` в нём
+  полагаться нельзя — там пусто;
+* нужные ему модули подключает **сам**: `getModulesList()` при `buildClass()`
+  не отрабатывает. `initAutoloader()` этого не заменяет — он поднимает
+  автозагрузку классов внутри каталога самого компонента, а не чужие модули.
+
+Если публичного метода у компонента нет — добавьте его в компонент (публичный,
+без вывода), а не оборачивайте `executeComponent()` буфером.
 
 ## Чего не делать
 
