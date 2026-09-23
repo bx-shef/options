@@ -158,21 +158,38 @@ final class Sync
 Модуль во втором аргументе обязателен — иначе при удалении модуля агент
 останется в базе и будет падать с «class not found» каждый запуск.
 
-В `DoUninstall()` — `\CAgent::RemoveModuleAgents('shef.demo');` и уборка
-рабочего каталога агента, иначе после снятия модуля во временном каталоге
-портала остаются замки.
-
-Путь к нему **спрашивают у модуля, а не пишут строкой**:
+**В `DoUninstall()` не обращайтесь к классам своего модуля.** `Import::GROUP`,
+`PriceLog::GROUP` и подобное падает с `Class not found`: на момент удаления
+автозагрузка вашего модуля уже не работает. Имя группы придётся повторить —
+литералом или константой самого `install/index.php`. Дублирование тут
+осознанное: один литерал в двух файлах дешевле, чем падение установщика.
 
 ```php
-use Bitrix\Main\IO\Directory;
-use Shef\Options\Main\TempFile\Pid;
+// install/index.php
+private const LOCK_GROUP = 'shef.demo.import';   // то же, что в классе агента
 
-Pid::removeByGroup(Import::GROUP, 0);                    // файлы группы, без сигналов
-Directory::deleteDirectory(Pid::getBasePath(Import::GROUP));   // пустой каталог группы
+public function DoUninstall(): void
+{
+    \CAgent::RemoveModuleAgents('shef.demo');
+
+    // shef.options — чужой модуль, он остаётся на портале; но подключить его
+    // надо явно: автоматически в установщике он не загружен.
+    if(\Bitrix\Main\Loader::includeModule('shef.options'))
+    {
+        \Shef\Options\Main\TempFile\Pid::removeByGroup(self::LOCK_GROUP, 0);
+        \Bitrix\Main\IO\Directory::deleteDirectory(
+            \Shef\Options\Main\TempFile\Pid::getBasePath(self::LOCK_GROUP)
+        );
+    }
+
+    $this->UnInstallFiles();
+    $this->UnInstallDB();
+}
 ```
 
-Две причины писать именно так.
+Без уборки после снятия модуля во временном каталоге портала остаются замки.
+
+Путь к ним **спрашивают у `Pid`, а не пишут строкой**, и на то две причины.
 
 Во-первых, каталог не в `/bitrix/tmp/`: `Pid` кладёт файлы во временный
 каталог портала — `upload/tmp`, а если задана `BX_TEMPORARY_FILES_DIRECTORY`,

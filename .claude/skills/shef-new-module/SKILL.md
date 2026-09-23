@@ -60,7 +60,13 @@ return [
             'isNeedUnInstall' => true,
         ],
     ], 'readonly' => true],
-    'controllers' => ['value' => ['namespaces' => []], 'readonly' => true],
+    // оба ключа показаны вместе; обычно нужен один, см. ниже
+    'controllers' => ['value' => [
+        'defaultNamespace' => '\\Shef\\Demo\\Controller',
+        'namespaces' => [
+            '\\Shef\\Demo\\Ajax' => 'demo',
+        ],
+    ], 'readonly' => true],
 ];
 ```
 
@@ -71,6 +77,15 @@ return [
 * `installDir` — карта раскладки фронта. Каталог модуля браузеру недоступен
   (в поставке nginx закрывает `/bitrix/modules/`), поэтому css и js
   копируются установщиком в `/bitrix/css` и `/bitrix/js`.
+* `controllers` — два разных ключа, и путать их не надо. `defaultNamespace` —
+  один базовый namespace: там ядро ищет действие, у которого в имени нет
+  префикса. `namespaces` — карта «namespace → префикс», когда групп
+  контроллеров несколько и каждую надо адресовать отдельно. Нужен обычно один
+  из двух; оба вместе — когда к основной группе добавляется вторая. Ajax у
+  модуля не планируется — оставьте `'namespaces' => []`, как в самом
+  `shef.options`. Namespace обязан соответствовать каталогу в `lib/`
+  строчными, иначе ajax молча отвечает 404; подробности — в
+  `shef-new-ajax-action`.
 
 ## 4. Автозагрузка держится на соглашении, а не на настройке
 

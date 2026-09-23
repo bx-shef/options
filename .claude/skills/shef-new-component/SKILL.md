@@ -62,8 +62,22 @@ public function UnInstallFiles(): bool
 
 ## Класс
 
+**`shef.options` подключается в самом файле класса, до слова `class`:**
+`extends AComponent` разбирается PHP в момент чтения файла, а `includeModules()`
+из жизненного цикла срабатывает позже — когда объявлять класс уже поздно. Без
+этой строки на портале без загруженного `shef.options` компонент падает с
+`Class not found`.
+
+Это **единственный** модуль, который подключается так. Остальные перечисляются
+в `getModulesList()`, и жизненный цикл сам соберёт ошибку, если какого-то нет.
+
 ```php
 use Shef\Options\Components\AComponent;
+
+if(!\Bitrix\Main\Loader::includeModule('shef.options'))
+{
+    return;   // без базового класса компонент не объявить; ошибку покажет страница
+}
 
 class ShefDemoOrderListComponent extends AComponent
 {
