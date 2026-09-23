@@ -28,11 +28,6 @@ $options->addTab(
 		->setName(Loc::getMessage($options->moduleId.'_TAB_DEF_NAME'))
 		->setTitle(Loc::getMessage($options->moduleId.'_TAB_DEF_TITLE'))
 		->addOption(
-			(new Options\RowInfo('WARNING_CATALOG'))
-				->setDescription(Loc::getMessage($options->moduleId.'_TAB_DEF_WARNING_CATALOG'))
-				->setType(Options\TypeUIAlert::Warning)
-		)
-		->addOption(
 			(new Options\Users('systemuserid'))
 				->setTitle(Loc::getMessage($options->moduleId.'_TAB_DEF_systemuserid'))
 				->setDescription(Loc::getMessage($options->moduleId.'_TAB_DEF_systemuserid_descr'))
