@@ -99,7 +99,7 @@ Class shef_options
 	/**
 	 * UnRegister Module
 	 *
-	 * @param array $arParams
+	 * @param array $arParams ключ savedata = 'Y' оставляет настройки модуля
 	 * @return bool
 	 * @throws \Bitrix\Main\LoaderException
 	 *
@@ -117,6 +117,22 @@ Class shef_options
 		}
 		
 		$this->unInstallLeftMenu();
+		
+		/**
+		 * Настройки уходят вместе с модулем.
+		 *
+		 * Раньше b_option оставался нетронутым: строки снятого модуля лежали
+		 * на портале дальше, а повторная установка молча поднимала прежние
+		 * значения — «поставить начисто» было нельзя.
+		 *
+		 * Ключ savedata — уговор ядра: установщик с формой удаления кладёт
+		 * сюда ответ на «сохранить данные?». Формы у модуля нет, поэтому
+		 * умолчание — чистить; появится форма — метод её уже слушает.
+		 */
+		if(($arParams['savedata'] ?? 'N') !== 'Y')
+		{
+			Config\Option::delete($this->MODULE_ID);
+		}
 		
 		UnRegisterModule($this->MODULE_ID);
 		

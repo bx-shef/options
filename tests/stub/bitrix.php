@@ -43,6 +43,42 @@ namespace Bitrix\Main\Type
 	}
 }
 
+namespace Bitrix\Main\Localization
+{
+	if(!class_exists(Loc::class))
+	{
+		/**
+		 * Сообщения языковых файлов. Тестам важно не что вернётся, а что
+		 * вызов не падает: проверять перевод здесь нечего, он уедет на портал.
+		 */
+		class Loc
+		{
+			public static function loadMessages(string $file): void {}
+
+			public static function getMessage(string $code, ?array $replace = null, ?string $language = null): ?string
+			{
+				return $code;
+			}
+		}
+	}
+}
+
+namespace Bitrix\Main
+{
+	if(!class_exists(Loader::class))
+	{
+		class LoaderException extends SystemException {}
+
+		class Loader
+		{
+			public static function includeModule(string $moduleName): bool
+			{
+				return true;
+			}
+		}
+	}
+}
+
 namespace Bitrix\Main\Config
 {
 	if(!class_exists(Option::class))
@@ -70,6 +106,12 @@ namespace Bitrix\Main\Config
 			public static function get(string $moduleId, string $name, mixed $default = '', mixed $siteId = false): mixed
 			{
 				return static::$values[$moduleId][$name] ?? $default;
+			}
+
+			/** Настройки одного модуля целиком — то, что зовёт установщик. */
+			public static function delete(string $moduleId, array $filter = []): void
+			{
+				unset(static::$values[$moduleId]);
 			}
 		}
 	}
