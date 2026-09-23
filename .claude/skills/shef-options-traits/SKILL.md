@@ -60,6 +60,17 @@ final class Importer
 
 ## `Log` по умолчанию не пишет ничего
 
+Сигнатуры дословно — угадывать их не надо:
+
+```php
+protected static function isSkipLog(): bool;                                  // по умолчанию true
+protected static function getLogFile(): string;                               // имя файла без пути и расширения
+protected static function log(array $value = [], bool $isNotSkip = false): void;
+```
+
+`log()` принимает **массив**. `static::log('строка')` — это `TypeError`, а не
+запись в лог.
+
 Трейт подключили, `static::log([...])` позвали, в логе пусто и ни одной
 ошибки. Так и задумано: `isSkipLog()` в трейте возвращает `true`, и `log()`
 выходит, не дойдя до записи.

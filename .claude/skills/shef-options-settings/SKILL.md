@@ -18,8 +18,19 @@ description: Справка о том, как устроена страница 
 | `options_conf.php` | **описание** вкладок и опций — то, что вы пишете |
 | `lang/ru/options_conf.php` | подписи |
 
-В `shef.options` `options.php` уже написан и его можно взять как есть. Ваш
-модуль пишет только `options_conf.php`.
+В `shef.options` `options.php` уже написан, и его берут **как есть, копией
+файла**: `bitrix/modules/shef.options/options.php` на проекте либо тот же файл
+в репозитории по нужному тегу —
+[options.php](https://github.com/bx-shef/options/blob/main/options.php).
+Если `shef.options` в рабочей копии нет — откройте его в репозитории, а не
+восстанавливайте по памяти. Ваш модуль пишет только `options_conf.php`.
+
+**`ShOptionsConfig` — глобальный класс без namespace.** Объявлен в
+`bitrix/modules/shef.options/optionsconfig.php`, и никакого пространства имён
+в этом файле нет. Пишется `\ShOptionsConfig` (или просто `ShOptionsConfig` —
+`options_conf.php` тоже без namespace). Чего писать нельзя:
+`use Shef\Options\Main\ShOptionsConfig;` — такого класса не существует, и
+файл упадёт на первой строке.
 
 ## Как выглядит описание
 
