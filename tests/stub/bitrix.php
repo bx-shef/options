@@ -115,6 +115,30 @@ namespace Bitrix\Main\Config
 			}
 		}
 	}
+
+	if(!class_exists(Configuration::class))
+	{
+		/**
+		 * Содержимое .settings.php. Отдаёт не весь ключ, а его value — ровно
+		 * так это читает autoload.php модуля. Наполняет массив тот тест,
+		 * которому он нужен: заглушка не знает, где лежит файл.
+		 */
+		class Configuration
+		{
+			/** @var array<string, array> */
+			public static array $settings = [];
+
+			public static function getInstance(?string $moduleId = null): static
+			{
+				return new static();
+			}
+
+			public function get(string $key): mixed
+			{
+				return static::$settings[$key]['value'] ?? null;
+			}
+		}
+	}
 }
 
 namespace Bitrix\Main

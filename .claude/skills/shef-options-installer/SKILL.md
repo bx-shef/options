@@ -14,9 +14,17 @@ description: Установка сущностей CRM из установщик
 
 ## Схема
 
+Код ниже выполняется из `install/index.php`, а там автозагрузка чужого модуля
+сама не включается — подключите его перед первым обращением:
+
 ```php
 use Bitrix\Main\Type\Dictionary;
 use Shef\Options\Installator;
+
+if(!\Bitrix\Main\Loader::includeModule('shef.options'))
+{
+    $this->ShowForm('ERROR', 'Не удалось подключить shef.options');   // метод заканчивается die()
+}
 
 $manager = new Installator\Manager(
     new Installator\Strategy\SmartProcessTypeStrategy()
