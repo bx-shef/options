@@ -105,6 +105,14 @@ final class Import
 ```php
 use Shef\Options\TraitList\Security\FixUser;
 
+// Модуль подключается ДО объявления класса. `use FixUser` внутри класса —
+// это композиция при разборе файла, ровно как extends: к моменту, когда
+// выполнится тело run(), класс уже должен быть построен.
+if(!\Bitrix\Main\Loader::includeModule('shef.options'))
+{
+    return;
+}
+
 final class Sync
 {
     use FixUser;
@@ -127,6 +135,13 @@ final class Sync
     }
 }
 ```
+
+Подключение внутри `run()` здесь не спасёт — и это не придирка, а фатал из
+прогона: `Trait "Shef\Options\TraitList\Security\FixUser" not found`. Разница
+с примером из пункта 1 в том, что там `Pid` только **зовут** из тела метода —
+такому классу достаточно подключить модуль внутри `run()`, до первого
+обращения. Наследование и трейт — другое дело: они разбираются раньше любого
+кода.
 
 * `getInitedUserId(): int` — абстрактный `protected static`, реализует ваш класс;
 * `initUser(): void` — `protected static`, подменяет, запомнив прежнего;

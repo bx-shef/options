@@ -18,6 +18,13 @@ description: Добавить ajax-действие в любой модуль �
 `\Bitrix\Main\Engine\Contract\Controllerable`.
 
 ```php
+// Как и у обычного компонента: наследование разбирается при чтении файла,
+// поэтому модуль подключается до слова class, а не в жизненном цикле.
+if(!\Bitrix\Main\Loader::includeModule('shef.options'))
+{
+    return;
+}
+
 class ShefDemoOrderListComponent extends \Shef\Options\Components\AControllerable
 {
     public function configureActions(): array
@@ -51,6 +58,9 @@ class ShefDemoOrderListComponent extends \Shef\Options\Components\AControllerabl
 Из браузера зовётся `BX.ajax.runComponentAction`.
 
 ## Путь 2: отдельный контроллер
+
+Файл контроллера начинается тем же стражем: `extends AjaxProcessor` — это
+наследование, оно разбирается до выполнения `init()`.
 
 `\Shef\Options\Components\AjaxProcessor` — наследник
 `\Bitrix\Main\Engine\Controller`. Обязан объявить `getModulesList()` (модули

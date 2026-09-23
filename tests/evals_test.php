@@ -104,19 +104,56 @@ foreach($evals as $name => $file)
 			continue;
 		}
 
-		if(!is_string($expected) || $expected === '')
+		// expected — строка либо список: одна и та же задача бывает решаема
+		// двумя навыками, и оба ответа верные. Ждать ровно один значило бы
+		// считать промахом то, что на стенде дало 5 из 5.
+		$expectedList = is_array($expected) ? array_values($expected) : [$expected];
+
+		if(empty($expectedList))
 		{
 			$broken[] = sprintf('%s[%d]: нет expected', $name, $i);
 			continue;
 		}
 
-		if($expected !== '<none>' && !in_array($expected, $names, true))
+		$isBad = false;
+
+		foreach($expectedList as $one)
 		{
-			$broken[] = sprintf('%s[%d]: expected «%s» — такого навыка нет', $name, $i, $expected);
+			if(!is_string($one) || $one === '')
+			{
+				$broken[] = sprintf('%s[%d]: expected содержит не строку', $name, $i);
+				$isBad = true;
+				break;
+			}
+
+			if($one !== '<none>' && !in_array($one, $names, true))
+			{
+				$broken[] = sprintf('%s[%d]: expected «%s» — такого навыка нет', $name, $i, $one);
+				$isBad = true;
+				break;
+			}
+		}
+
+		if($isBad)
+		{
 			continue;
 		}
 
-		if($expected === $name)
+		// «Взять навык X» и «не брать ничего» вместе не бывает: такая фраза
+		// проходит при любом поведении модели и не проверяет ничего.
+		if(count($expectedList) > 1 && in_array('<none>', $expectedList, true))
+		{
+			$broken[] = sprintf('%s[%d]: <none> вместе с именем навыка — фраза ничего не проверяет', $name, $i);
+			continue;
+		}
+
+		if(count($expectedList) !== count(array_unique($expectedList)))
+		{
+			$broken[] = sprintf('%s[%d]: expected перечисляет навык дважды', $name, $i);
+			continue;
+		}
+
+		if(in_array($name, $expectedList, true))
 		{
 			$self++;
 		}
@@ -127,12 +164,21 @@ foreach($evals as $name => $file)
 
 		$key = mb_strtolower(trim($input));
 
-		if(isset($allInputs[$key]) && $allInputs[$key] !== $expected)
+		// Сверяем как множества: порядок в списке ничего не значит.
+		$normalized = $expectedList;
+		sort($normalized);
+
+		if(isset($allInputs[$key]) && $allInputs[$key] !== $normalized)
 		{
-			$broken[] = sprintf('%s[%d]: та же фраза в другом навыке ждёт «%s»', $name, $i, $allInputs[$key]);
+			$broken[] = sprintf(
+				'%s[%d]: та же фраза в другом навыке ждёт «%s»',
+				$name,
+				$i,
+				implode(', ', $allInputs[$key])
+			);
 		}
 
-		$allInputs[$key] = $expected;
+		$allInputs[$key] = $normalized;
 	}
 
 	if($self === 0)
