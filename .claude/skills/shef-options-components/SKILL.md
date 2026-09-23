@@ -1,6 +1,6 @@
 ---
 name: shef-options-components
-description: Компоненты и ajax в модулях линейки shef.* для Битрикс24 — базовый класс компонента AComponent с готовым жизненным циклом, ajax-компонент AControllerable, обработчик ajax вне компонента AjaxProcessor, подключение компонента через Builder и фильтры прав Actions\Normal и Actions\Free. Брать, когда в модуле делается компонент, ajax-действие или нужно подключить компонент из кода.
+description: Справка об устройстве компонентов и ajax в shef.options для любого модуля: базовый класс AComponent и его жизненный цикл, ajax-компонент AControllerable, обработчик AjaxProcessor, Builder, фильтры прав Actions\Normal и Actions\Free. Брать, когда надо понять или починить существующий компонент или ajax. Чтобы создать компонент — shef-new-component, добавить ajax — shef-new-ajax-action, подключить компонент из кода — shef-use-component.
 ---
 
 # Компоненты и ajax
