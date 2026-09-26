@@ -13,13 +13,23 @@ description: Логировать через модуль shef.problems (Monolog
 Битрикса. Всё ниже требует, чтобы он был **установлен** на портале (а он
 требует `shef.options` 3.0.0+).
 
+## Где лежат логи
+
+**Вне корня сайта**: `\Shef\Problems\Main\Constants::getLogDir()` — по
+умолчанию на уровень выше `DOCUMENT_ROOT`, для BitrixVM `/home/bitrix/sh_log`.
+Путь к файлу — только `\Shef\Problems\Main\Constants::getLogFullPath('имя')`
+(без `.log`), строкой не собирать: проект может перенести каталог
+(`/bitrix/.settings_extra.php`, ключ `shef.problems` → `logDir`). Прямой ссылки
+на лог нет и быть не должно — смотрят через **Настройки → Учёт проблем →
+Логи** (`/bitrix/admin/shef_problems_logs.php`, только администратору).
+
 ## Что брать
 
 | задача | что | где |
 |---|---|---|
 | сбой, который надо найти потом по типу и понять, кому он | трейт `LoggerProblems` | ниже, «Проблема» |
 | увидеть, что пришло, — только администратору, на экране | `Logger::PrHtml` / трейт `DebuggerProblems` | ниже, «Отладка» |
-| след работы в файл `/local/sh_log/log.log` | `Logger::Log` | ниже, «Файл» |
+| след работы в файл `log.log` каталога логов | `Logger::Log` | ниже, «Файл» |
 | свой набор обработчиков (Telegram, почта) | свой `Integration\Monolog\Logger` | [docs/4_monolog.md](https://github.com/bx-shef/problems/blob/main/docs/4_monolog.md) |
 
 ## Модуль подключается до класса
@@ -54,7 +64,7 @@ use Shef\Problems\Main\Constants;
 ## Проблема — трейт `LoggerProblems`
 
 `\Shef\Problems\Factory\Trait\LoggerProblems` даёт `$this->logger`: запись
-уходит сразу в `/local/sh_log/<тип>.log` и в журнал событий с этим типом, с
+уходит сразу в `<тип>.log` каталога логов и в журнал событий с этим типом, с
 модулем, классом и ответственным.
 
 ```php
@@ -186,7 +196,7 @@ $logger->error('Оплата не сопоставлена', ['itemId' => $payme
 \Shef\Problems\Logger::Log->getLogger()->info('Импорт начат', ['rows' => $count]);
 ```
 
-`Logger::Log` — `/local/sh_log/log.log`, дописывается. `Logger::Log1` —
+`Logger::Log` — `log.log`, дописывается. `Logger::Log1` —
 `log1.log`, первая запись за запрос стирает файл: для разбора одной цепочки.
 `Logger::Problems->getLogger()` бросает `LogicException` — это фабрика, не
 логгер.
@@ -204,6 +214,8 @@ $logger->error('Оплата не сопоставлена', ['itemId' => $payme
   стенда.
 - **Не звать `new \Monolog\Logger` напрямую** для проблем: пропадут журнал
   событий, тип и ответственный.
+- **Не класть свой лог под корень сайта** (`/local/…`, `/upload/…`): его
+  отдаст веб-сервер. Свой файл — `Constants::getLogFullPath('acme-import')`.
 
 ## Проверка
 
