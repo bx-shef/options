@@ -1,5 +1,10 @@
 # change log
 
+## 3.0.6 — 2026-09-26
+* Несовместимо: удалены lib/integration/shef/uiclear/ (Events, Manager) и lib/integration/update/events.php — две копии одного: кнопка «Правки ядра» в меню обновлений и подтверждение перед установкой. Обе вели на страницу has-change-files.php, которой в модуле нет, обе не были зарегистрированы (installEvents пуст) и обе ехали на портал. Замена — штатные средства Битрикса: контроль целостности файлов из модуля security и «Проверка системы»
+* Utils::getColorMap() больше не зависит от модуля shef.uiclear: ветка с перечислением \Shef\UiClear\Css\Color возвращала ровно те же цвета, что и лежавший рядом запасной набор литералами. Поведение не изменилось, зависимости на модуль в коде больше нет
+* Удалён языковой файл lang/ru/lib/integration/shef/uiclear/events.php
+
 ## 3.0.5 — 2026-09-23
 * include.php подключает def-functions.php. Трейт TraitList\Log, Integration\AEvents и Integration\IBlock\AEntity зовут глобальную _log(), которой до этого не существовало: файл объявлял её, ехал в поставке и не подключался ниоткуда. На портале после Loader::includeModule() function_exists('_log') давал false, и первый же вызов Log::log() падал
 * tests/include_test.php — подключение модуля объявляет _log(), _log1() и _pr(); проверяются и типы параметров _log(), которые зовёт трейт

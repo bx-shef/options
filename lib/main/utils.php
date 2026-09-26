@@ -119,22 +119,14 @@ class Utils
 	
 	/**
 	 * Список цветов на подмену для подсветки синтаксиса PHP
+	 *
+	 * Цвета литералами, а не из перечисления чужого модуля: ветка на
+	 * shef.uiclear возвращала ровно эти же значения, а модуля нет и не будет.
+	 *
 	 * @return string[]
-	 * @throws LoaderException
 	 */
 	protected static function getColorMap(): array
 	{
-		if(\Bitrix\Main\Loader::includeModule('shef.uiclear'))
-		{
-			return [
-				ini_get('highlight.html') => \Shef\UiClear\Css\Color::teal->value,
-				ini_get('highlight.keyword') => \Shef\UiClear\Css\Color::lawngreen->value,
-				ini_get('highlight.string') => \Shef\UiClear\Css\Color::orange->value,
-				ini_get('highlight.default') => \Shef\UiClear\Css\Color::blueV2->value,
-				ini_get('highlight.comment') => \Shef\UiClear\Css\Color::gray300->value,
-			];
-		}
-		
 		return [
 			ini_get('highlight.html') => '#20c997',
 			ini_get('highlight.keyword') => '#7cfc00',
