@@ -23,7 +23,9 @@
 # формат). --check сверяет с диском оба манифеста, --check <источник> — только
 # копию, а --to локальные навыки не трогает: без этого первая же раскладка
 # стирала бы их как «то, чего в источнике нет». Имя локального навыка не
-# должно совпадать с навыком линейки — --to откажется раскладывать.
+# должно совпадать с навыком линейки — --to откажется раскладывать. Файл, не
+# записанный ни в один манифест получателя, --to тоже не удаляет, а
+# отказывается: удалять можно только то, что сам когда-то разложил.
 
 set -euo pipefail
 
@@ -277,20 +279,33 @@ sync_to()
 		fi
 	fi
 
-	# Убираем то, чего в источнике уже нет: иначе удалённый навык останется
-	# жить в копии. Локальные навыки получателя — не наши, их не трогаем.
-	if [ -d "$targetDir" ]
+	# Файл получателя, которого нет ни в источнике, ни в его MANIFEST (то есть
+	# не наш и не разложен нами раньше), ни в его LOCAL.MANIFEST, — чужой, и
+	# удалять его нельзя. Так было: локальный навык, заведённый до первого
+	# --local, раскладка стирала молча, а файлы ещё не лежали в git.
+	local unknown
+	unknown="$(LC_ALL=C comm -23 \
+		<( cd "$targetDir" && find . -type f ! -name "$MANIFEST_NAME" ! -name "$LOCAL_NAME" -print | sed 's#^\./##' | LC_ALL=C sort ) \
+		<( { skill_files; manifest_paths "$targetDir/$MANIFEST_NAME"; manifest_paths "$targetLocal"; } | LC_ALL=C sort -u ))"
+	if [ -n "$unknown" ]
 	then
-		while IFS= read -r file
-		do
-			if [ ! -f "$SKILLS_DIR/$file" ] \
-				&& ! { [ -f "$targetLocal" ] && manifest_paths "$targetLocal" | grep -qxF "$file"; }
-			then
-				rm -f "$targetDir/$file"
-				note "убран лишний файл: $file"
-			fi
-		done < <( cd "$targetDir" && find . -type f ! -name "$MANIFEST_NAME" ! -name "$LOCAL_NAME" -print | sed 's#^\./##' )
+		fail 'у получателя файлы, которых нет ни в источнике, ни в его манифестах:'
+		echo "$unknown" | sed 's/^/      /' >&2
+		echo '      Это локальные навыки? У получателя: .claude/skills/sync.sh --local' >&2
+		echo '      Мусор? Удалите руками. Раскладка ничего не тронула.' >&2
+		return 1
 	fi
+
+	# Убираем то, что разложили раньше, а в источнике его уже нет: иначе
+	# удалённый навык останется жить в копии. Локальные — не наши.
+	while IFS= read -r file
+	do
+		if [ ! -f "$SKILLS_DIR/$file" ] && [ -f "$targetDir/$file" ]
+		then
+			rm -f "$targetDir/$file"
+			note "убран файл, которого больше нет в источнике: $file"
+		fi
+	done < <(manifest_paths "$targetDir/$MANIFEST_NAME")
 
 	while IFS= read -r file
 	do

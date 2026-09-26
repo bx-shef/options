@@ -10,7 +10,7 @@
 #
 # Пересобрать в источнике: .claude/skills/sync.sh --manifest
 #
-7c3bc2b6e3f88323e27dbb167d438a743a15a6877528cd2763094cce1884c189  README.md
+35b5881c25d26fc2d0587c17d9ae9c7e138a1a2c583153c01987eaff8b825dc4  README.md
 d9a5ed42fdab73c1ccb490e4dc28074000d53b9228047492c0f599dc1c7904b6  shef-feedback/SKILL.md
 6654c846d9b8c3622607ded5d12bd997ffba526585494a0eb7884a5e3b1ed22a  shef-feedback/evals/selection.json
 cd10d24017120a7f8a6c965a41f50fcdbcba39e6fddafc547ce5165bd99e8056  shef-new-agent/SKILL.md
@@ -34,4 +34,4 @@ e0636af9afe972593349bd6cb0594e7efde629adce6b7e4bbf5b85db1a4d1a9f  shef-use-compo
 6d43df03f4818775c4ee9e11ec3cbad05a9d30c6775ca67e0e87bc6baa0acaee  shef-use-component/evals/selection.json
 9e6119dc41336ff8963a90dc8eebcec2d1e4a6d7465f7854a30ca755e493d52b  shef-use-logger/SKILL.md
 74094b8622e93253d3e349ef4a39ec75a4a6b7ce905ac04d04cc82862395bce5  shef-use-logger/evals/selection.json
-191e4b9376eac204d1c4ea55af7cb82508db1d4cc201ace5cd7ffaa5af3f7fc2  sync.sh
+902e4e77159aec27fc12a317b4199ac9e8e9171c9b9c41467bfe2ce7317aec52  sync.sh

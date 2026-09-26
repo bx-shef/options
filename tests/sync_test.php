@@ -16,7 +16,11 @@
  * 3. --local записал его — --check зелёный, сверка с источником тоже;
  * 4. повторная раскладка локальный навык не трогает;
  * 5. правка локального навыка без --local — --check краснеет;
- * 6. локальный навык с путём навыка линейки — --to отказывается.
+ * 6. локальный навык с путём навыка линейки — --to отказывается;
+ * 7. файл, не записанный ни в один манифест получателя, --to не удаляет, а
+ *    отказывается. Так было: локальный навык, заведённый до первого
+ *    --local, раскладка стёрла молча;
+ * 8. навык, убранный из источника, из копии уходит — если его раскладывали.
  */
 
 $root = dirname(__DIR__);
@@ -73,6 +77,8 @@ mkdir(dirname($local), 0777, true);
 file_put_contents($local, "---\nname: acme-local\ndescription: навык получателя\n---\n");
 
 Check::same('без LOCAL.MANIFEST — лишний файл ловится', $run(escapeshellarg($targetSync).' --check') !== 0, true);
+Check::same('без LOCAL.MANIFEST --to отказывается', $run(escapeshellarg($sync).' --to '.escapeshellarg($target)) !== 0, true);
+Check::same('…и ничего не стёр', is_file($local), true);
 Check::same('--local отработал', $run(escapeshellarg($targetSync).' --local'), 0);
 Check::same('после --local копия цела', $run(escapeshellarg($targetSync).' --check'), 0);
 Check::same('и совпадает с источником', $run(escapeshellarg($targetSync).' --check '.escapeshellarg($root.'/.claude/skills/MANIFEST')), 0);
@@ -90,6 +96,21 @@ file_put_contents($local, "\nправка", FILE_APPEND);
 Check::same('без --local — ловится', $run(escapeshellarg($targetSync).' --check') !== 0, true);
 $run(escapeshellarg($targetSync).' --local');
 Check::same('с --local — цела', $run(escapeshellarg($targetSync).' --check'), 0);
+
+Check::group('убранный из источника навык уходит');
+
+$old = $target.'/.claude/skills/shef-removed/SKILL.md';
+mkdir(dirname($old), 0777, true);
+file_put_contents($old, 'старый навык');
+file_put_contents(
+	$target.'/.claude/skills/MANIFEST',
+	hash_file('sha256', $old).'  shef-removed/SKILL.md'.PHP_EOL,
+	FILE_APPEND
+);
+
+Check::same('--to отработал', $run(escapeshellarg($sync).' --to '.escapeshellarg($target)), 0);
+Check::same('разложенный раньше и убранный из источника — удалён', is_file($old), false);
+Check::same('локальный — на месте', is_file($local), true);
 
 Check::group('совпадение с навыком линейки');
 
