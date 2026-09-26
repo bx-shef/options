@@ -1,5 +1,8 @@
 # change log
 
+## 3.0.9 — 2026-09-26
+* tests/assert.php и examples/_bootstrap.php — заглушённое «@» больше не провал. Обработчик ошибок зовётся и для него, и без проверки error_reporting() обвязка превращала в исключение штатно подавленное предупреждение. Нашлось в shef.problems: Monolog глушит @fileinode() на файле, который только что переименовали, и тест краснел. Незаглушённые warning и notice по-прежнему провал
+
 ## 3.0.8 — 2026-09-26
 * .claude/skills/shef-use-logger — логи shef.problems с 2.0.0 лежат вне корня сайта (Constants::getLogDir(), для BitrixVM /home/bitrix/sh_log). Навык называл /local/sh_log; теперь говорит, где каталог, что путь собирается только через getLogFullPath() и что свой лог под корень сайта не кладут
 

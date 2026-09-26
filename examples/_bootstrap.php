@@ -141,6 +141,12 @@ else
  */
 set_error_handler(static function(int $level, string $message, string $file, int $line): bool
 {
+	// Заглушённое «@» — не провал: так же поступает и ядро.
+	if(!(error_reporting() & $level))
+	{
+		return false;
+	}
+
 	throw new ErrorException($message, 0, $level, $file, $line);
 });
 
