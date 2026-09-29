@@ -6,6 +6,7 @@
 #   .claude/skills/sync.sh --check             свои файлы против своего MANIFEST
 #   .claude/skills/sync.sh --check <источник>  ещё и сверка с источником
 #   .claude/skills/sync.sh --to <путь к репо>  разложить в соседний репозиторий
+#   .claude/skills/sync.sh --local             пересобрать LOCAL.MANIFEST (у получателя)
 #
 # <источник> — путь к MANIFEST источника либо его адрес (raw.githubusercontent).
 #
@@ -15,12 +16,24 @@
 # месяц, и разойдётся МОЛЧА: навык продолжит уверенно рассказывать про
 # переименованный класс. Поэтому копия несёт с собой список хешей и этот
 # скрипт, а CI получателя зовёт --check.
+#
+# Локальные навыки. У получателя бывают навыки про него самого, которых в
+# источнике нет и быть не должно: источник не знает о получателях. Они лежат
+# рядом с копией и перечислены в LOCAL.MANIFEST получателя (хеши, тот же
+# формат). --check сверяет с диском оба манифеста, --check <источник> — только
+# копию, а --to локальные навыки не трогает: без этого первая же раскладка
+# стирала бы их как «то, чего в источнике нет». Имя локального навыка не
+# должно совпадать с навыком линейки — --to откажется раскладывать. Файл, не
+# записанный ни в один манифест получателя, --to тоже не удаляет, а
+# отказывается: удалять можно только то, что сам когда-то разложил.
 
 set -euo pipefail
 
 SKILLS_DIR="$(cd "$(dirname "$0")" && pwd)"
 MANIFEST_NAME='MANIFEST'
 MANIFEST="$SKILLS_DIR/$MANIFEST_NAME"
+LOCAL_NAME='LOCAL.MANIFEST'
+LOCAL="$SKILLS_DIR/$LOCAL_NAME"
 
 RED=''; GREEN=''; YELLOW=''; RESET=''
 if [ -t 1 ]; then
@@ -46,30 +59,52 @@ hash_file()
 	fi
 }
 
-# Файлы навыков: всё в каталоге, кроме самого манифеста.
-# Порядок фиксируем сортировкой в C-локали, иначе манифест будет разный на
-# разных машинах.
-skill_files()
+# Строки манифеста без комментариев и пустых.
+manifest_lines()
 {
-	( cd "$SKILLS_DIR" && find . -type f ! -name "$MANIFEST_NAME" -print ) \
+	grep -vE '^[[:space:]]*(#|$)' "${1:-$MANIFEST}" 2>/dev/null || true
+}
+
+# Пути из манифеста.
+manifest_paths()
+{
+	manifest_lines "$1" | sed -E 's/^[0-9a-f]+  //'
+}
+
+# Все файлы каталога, кроме обоих манифестов. Порядок фиксируем сортировкой
+# в C-локали, иначе манифест будет разный на разных машинах.
+all_files()
+{
+	( cd "$SKILLS_DIR" && find . -type f ! -name "$MANIFEST_NAME" ! -name "$LOCAL_NAME" -print ) \
 		| sed 's#^\./##' \
 		| LC_ALL=C sort
 }
 
-# Текущее состояние в формате манифеста.
-current_lines()
+# Файлы навыков линейки: всё, кроме локальных навыков получателя.
+skill_files()
+{
+	if [ -f "$LOCAL" ]
+	then
+		LC_ALL=C comm -23 <(all_files) <(manifest_paths "$LOCAL" | LC_ALL=C sort)
+	else
+		all_files
+	fi
+}
+
+# Строки в формате манифеста для списка файлов со stdin.
+lines_of()
 {
 	local file
 	while IFS= read -r file
 	do
 		printf '%s  %s\n' "$(hash_file "$SKILLS_DIR/$file")" "$file"
-	done < <(skill_files)
+	done
 }
 
-# Строки манифеста без комментариев и пустых.
-manifest_lines()
+# Текущее состояние навыков линейки в формате манифеста.
+current_lines()
 {
-	grep -vE '^[[:space:]]*(#|$)' "${1:-$MANIFEST}" || true
+	skill_files | lines_of
 }
 
 write_manifest()
@@ -112,20 +147,23 @@ check_self()
 		return 1
 	fi
 
+	# Оба манифеста вместе против всего, что на диске: так ловится и правка
+	# навыка, и файл, не попавший ни в один манифест.
 	local diffOut
-	if ! diffOut="$(diff <(manifest_lines) <(current_lines))"
+	if ! diffOut="$(diff <( { manifest_lines; manifest_lines "$LOCAL"; } | LC_ALL=C sort -k2) <(all_files | lines_of | LC_ALL=C sort -k2))"
 	then
 		fail 'копия навыков разошлась со своим манифестом'
 		echo "$diffOut" | sed 's/^/      /' >&2
 		echo '      < в манифесте, > на диске' >&2
 		echo '      Правили навык в копии? Правьте в источнике и разложите заново.' >&2
 		echo '      Правили в источнике? Пересоберите манифест: sync.sh --manifest' >&2
+		echo '      Правили локальный навык получателя? Пересоберите: sync.sh --local' >&2
 		bad=1
 	fi
 
 	if [ $bad -eq 0 ]
 	then
-		ok "навыки целы: $(manifest_lines | wc -l | tr -d ' ') файлов"
+		ok "навыки целы: $(manifest_lines | wc -l | tr -d ' ') файлов, локальных $(manifest_lines "$LOCAL" | wc -l | tr -d ' ')"
 	fi
 
 	return $bad
@@ -171,6 +209,33 @@ check_against()
 	ok 'навыки совпадают с источником'
 }
 
+# Локальные навыки получателя: всё на диске, чего нет в копии линейки.
+write_local()
+{
+	local tmp
+
+	if [ ! -f "$MANIFEST" ]
+	then
+		fail "манифеста нет: $MANIFEST"
+		return 1
+	fi
+
+	tmp="$(mktemp)"
+
+	{
+		echo '# Локальные навыки этого репозитория — их нет в источнике линейки.'
+		echo '#'
+		echo '# Правят их здесь. sync.sh --to их не трогает, --check сверяет с диском.'
+		echo '# Пересобрать: .claude/skills/sync.sh --local'
+		echo '#'
+		LC_ALL=C comm -23 <(all_files) <(manifest_paths "$MANIFEST" | LC_ALL=C sort) | lines_of
+	} > "$tmp"
+
+	mv "$tmp" "$LOCAL"
+
+	ok "локальный манифест пересобран: $(manifest_lines "$LOCAL" | wc -l | tr -d ' ') файлов"
+}
+
 sync_to()
 {
 	local target="$1"
@@ -196,23 +261,51 @@ sync_to()
 	fi
 
 	local targetDir="$target/.claude/skills"
+	local targetLocal="$targetDir/$LOCAL_NAME"
 	local file count=0
 
 	mkdir -p "$targetDir"
 
-	# Убираем то, чего в источнике уже нет: иначе удалённый навык останется
-	# жить в копии.
-	if [ -d "$targetDir" ]
+	# Локальный навык получателя с именем навыка линейки раскладка затёрла бы.
+	if [ -f "$targetLocal" ]
 	then
-		while IFS= read -r file
-		do
-			if [ ! -f "$SKILLS_DIR/$file" ]
-			then
-				rm -f "$targetDir/$file"
-				note "убран лишний файл: $file"
-			fi
-		done < <( cd "$targetDir" && find . -type f ! -name "$MANIFEST_NAME" -print | sed 's#^\./##' )
+		local clash
+		clash="$(LC_ALL=C comm -12 <(manifest_paths "$targetLocal" | LC_ALL=C sort) <(skill_files))"
+		if [ -n "$clash" ]
+		then
+			fail 'локальный навык получателя совпадает с навыком линейки:'
+			echo "$clash" | sed 's/^/      /' >&2
+			return 1
+		fi
 	fi
+
+	# Файл получателя, которого нет ни в источнике, ни в его MANIFEST (то есть
+	# не наш и не разложен нами раньше), ни в его LOCAL.MANIFEST, — чужой, и
+	# удалять его нельзя. Так было: локальный навык, заведённый до первого
+	# --local, раскладка стирала молча, а файлы ещё не лежали в git.
+	local unknown
+	unknown="$(LC_ALL=C comm -23 \
+		<( cd "$targetDir" && find . -type f ! -name "$MANIFEST_NAME" ! -name "$LOCAL_NAME" -print | sed 's#^\./##' | LC_ALL=C sort ) \
+		<( { skill_files; manifest_paths "$targetDir/$MANIFEST_NAME"; manifest_paths "$targetLocal"; } | LC_ALL=C sort -u ))"
+	if [ -n "$unknown" ]
+	then
+		fail 'у получателя файлы, которых нет ни в источнике, ни в его манифестах:'
+		echo "$unknown" | sed 's/^/      /' >&2
+		echo '      Это локальные навыки? У получателя: .claude/skills/sync.sh --local' >&2
+		echo '      Мусор? Удалите руками. Раскладка ничего не тронула.' >&2
+		return 1
+	fi
+
+	# Убираем то, что разложили раньше, а в источнике его уже нет: иначе
+	# удалённый навык останется жить в копии. Локальные — не наши.
+	while IFS= read -r file
+	do
+		if [ ! -f "$SKILLS_DIR/$file" ] && [ -f "$targetDir/$file" ]
+		then
+			rm -f "$targetDir/$file"
+			note "убран файл, которого больше нет в источнике: $file"
+		fi
+	done < <(manifest_paths "$targetDir/$MANIFEST_NAME")
 
 	while IFS= read -r file
 	do
@@ -235,7 +328,7 @@ sync_to()
 
 usage()
 {
-	sed -n '3,12p' "$0" | sed 's/^# \{0,1\}//'
+	sed -n '3,13p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 main()
@@ -250,6 +343,9 @@ main()
 			then
 				check_against "$2" || exit 1
 			fi
+			;;
+		--local)
+			write_local
 			;;
 		--to)
 			if [ -z "${2-}" ]
