@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Shef\Options\TraitList\Constants;
 
@@ -7,13 +9,12 @@ namespace Shef\Options\TraitList\Constants;
  */
 trait Price
 {
-	public static function getBaseCurrency(): string
-	{
-		if(\Bitrix\Main\Loader::includeModule('crm'))
-		{
-			return \CCrmCurrency::GetBaseCurrencyID();
-		}
+    public static function getBaseCurrency(): string
+    {
+        if (\Bitrix\Main\Loader::includeModule('crm')) {
+            return \CCrmCurrency::GetBaseCurrencyID();
+        }
 
-		return 'BYN';
-	}
+        return 'BYN';
+    }
 }

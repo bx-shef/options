@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Shef\Options\TraitList\Tools;
 
@@ -7,27 +9,27 @@ namespace Shef\Options\TraitList\Tools;
  */
 trait IsDebug
 {
-	private bool $isDebug = false;
-	
-	/**
-	 * Вкл/Выкл режим отладки
-	 *
-	 * @param bool $isDebug
-	 * @return $this
-	 */
-	public function setIsDebug(bool $isDebug): self
-	{
-		$this->isDebug = $isDebug;
-		return $this;
-	}
-	
-	/**
-	 * Указывает что работает в режиме отладки.
-	 *
-	 * @return bool
-	 */
-	public function isDebug(): bool
-	{
-		return $this->isDebug;
-	}
+    private bool $isDebug = false;
+
+    /**
+     * Вкл/Выкл режим отладки
+     *
+     * @param bool $isDebug
+     * @return $this
+     */
+    public function setIsDebug(bool $isDebug): self
+    {
+        $this->isDebug = $isDebug;
+        return $this;
+    }
+
+    /**
+     * Указывает что работает в режиме отладки.
+     *
+     * @return bool
+     */
+    public function isDebug(): bool
+    {
+        return $this->isDebug;
+    }
 }

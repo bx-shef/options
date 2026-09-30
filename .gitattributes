@@ -9,9 +9,11 @@
 /.gitattributes		export-ignore
 /.github/		export-ignore
 /.gitignore		export-ignore
+/.php-cs-fixer.dist.php	export-ignore
 /CLAUDE.md		export-ignore
 /CONTRIBUTING.md	export-ignore
 /docs/			export-ignore
 /examples/		export-ignore
 /build.sh		export-ignore
+/composer.lock		export-ignore
 /tests/			export-ignore

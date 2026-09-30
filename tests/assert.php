@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * Крошечная обвязка для тестов: ни зависимостей, ни фреймворка.
@@ -14,126 +16,116 @@
 
 final class Check
 {
-	/** @var string[] */
-	private static array $errors = [];
-	private static int $count = 0;
+    /** @var string[] */
+    private static array $errors = [];
+    private static int $count = 0;
 
-	public static function boot(): void
-	{
-		// Обработчик пропускает уровни, которых нет в error_reporting(), —
-		// так отличается заглушённое «@» (см. ниже). Но маску задаёт php.ini,
-		// и на CI это E_ALL & ~E_DEPRECATED: deprecation ядра молча проходила
-		// мимо. Измерено: file_put_contents($f, 'x', null) — deprecated с
-		// 8.1 — тест не ронял. Поэтому маску задаём сами, а не берём у
-		// окружения: иначе обещание «warning и notice — это провал» зависит
-		// от того, на какой машине запустили.
-		error_reporting(E_ALL);
+    public static function boot(): void
+    {
+        // Обработчик пропускает уровни, которых нет в error_reporting(), —
+        // так отличается заглушённое «@» (см. ниже). Но маску задаёт php.ini,
+        // и на CI это E_ALL & ~E_DEPRECATED: deprecation ядра молча проходила
+        // мимо. Измерено: file_put_contents($f, 'x', null) — deprecated с
+        // 8.1 — тест не ронял. Поэтому маску задаём сами, а не берём у
+        // окружения: иначе обещание «warning и notice — это провал» зависит
+        // от того, на какой машине запустили.
+        error_reporting(E_ALL);
 
-		set_error_handler(static function(int $level, string $message, string $file, int $line): bool
-		{
-			// Заглушённое «@» — не провал: обработчик зовётся и для него, а
-			// error_reporting() в этот момент не содержит уровня ошибки. Так
-			// делает и ядро. Нашлось в shef.problems: Monolog штатно глушит
-			// @fileinode() на файле, который только что переименовали.
-			if(!(error_reporting() & $level))
-			{
-				return false;
-			}
+        set_error_handler(static function (int $level, string $message, string $file, int $line): bool {
+            // Заглушённое «@» — не провал: обработчик зовётся и для него, а
+            // error_reporting() в этот момент не содержит уровня ошибки. Так
+            // делает и ядро. Нашлось в shef.problems: Monolog штатно глушит
+            // @fileinode() на файле, который только что переименовали.
+            if (!(error_reporting() & $level)) {
+                return false;
+            }
 
-			throw new ErrorException($message, 0, $level, $file, $line);
-		});
-	}
+            throw new ErrorException($message, 0, $level, $file, $line);
+        });
+    }
 
-	public static function group(string $title): void
-	{
-		echo PHP_EOL, $title, PHP_EOL;
-	}
+    public static function group(string $title): void
+    {
+        echo PHP_EOL, $title, PHP_EOL;
+    }
 
-	/**
-	 * Строгое сравнение, без приведения типов: '0' и 0 — разные вещи, и
-	 * именно на таком приведении обычно и разъезжается разбор настроек.
-	 */
-	public static function same(string $what, mixed $actual, mixed $expected): void
-	{
-		static::$count++;
+    /**
+     * Строгое сравнение, без приведения типов: '0' и 0 — разные вещи, и
+     * именно на таком приведении обычно и разъезжается разбор настроек.
+     */
+    public static function same(string $what, mixed $actual, mixed $expected): void
+    {
+        static::$count++;
 
-		if($actual === $expected)
-		{
-			printf("  OK   %s = %s%s", $what, static::show($actual), PHP_EOL);
-			return;
-		}
+        if ($actual === $expected) {
+            printf("  OK   %s = %s%s", $what, static::show($actual), PHP_EOL);
+            return;
+        }
 
-		static::fail(sprintf(
-			'%s: получено %s, ожидалось %s',
-			$what,
-			static::show($actual),
-			static::show($expected)
-		));
-	}
+        static::fail(sprintf(
+            '%s: получено %s, ожидалось %s',
+            $what,
+            static::show($actual),
+            static::show($expected)
+        ));
+    }
 
-	public static function throws(string $what, string $exceptionClass, callable $call): void
-	{
-		static::$count++;
+    public static function throws(string $what, string $exceptionClass, callable $call): void
+    {
+        static::$count++;
 
-		try
-		{
-			$call();
-		}
-		catch(Throwable $throwable)
-		{
-			if($throwable instanceof $exceptionClass)
-			{
-				printf("  OK   %s бросает %s%s", $what, $exceptionClass, PHP_EOL);
-				return;
-			}
+        try {
+            $call();
+        } catch (Throwable $throwable) {
+            if ($throwable instanceof $exceptionClass) {
+                printf("  OK   %s бросает %s%s", $what, $exceptionClass, PHP_EOL);
+                return;
+            }
 
-			static::fail(sprintf(
-				'%s: брошено %s, ожидалось %s',
-				$what,
-				get_class($throwable),
-				$exceptionClass
-			));
+            static::fail(sprintf(
+                '%s: брошено %s, ожидалось %s',
+                $what,
+                get_class($throwable),
+                $exceptionClass
+            ));
 
-			return;
-		}
+            return;
+        }
 
-		static::fail(sprintf('%s: исключение %s не брошено', $what, $exceptionClass));
-	}
+        static::fail(sprintf('%s: исключение %s не брошено', $what, $exceptionClass));
+    }
 
-	private static function fail(string $message): void
-	{
-		static::$errors[] = $message;
-		printf("  FAIL %s%s", $message, PHP_EOL);
-	}
+    private static function fail(string $message): void
+    {
+        static::$errors[] = $message;
+        printf("  FAIL %s%s", $message, PHP_EOL);
+    }
 
-	private static function show(mixed $value): string
-	{
-		if(is_object($value))
-		{
-			return get_class($value).' '.json_encode($value, JSON_UNESCAPED_UNICODE);
-		}
+    private static function show(mixed $value): string
+    {
+        if (is_object($value)) {
+            return get_class($value).' '.json_encode($value, JSON_UNESCAPED_UNICODE);
+        }
 
-		return var_export($value, true);
-	}
+        return var_export($value, true);
+    }
 
-	public static function finish(): never
-	{
-		echo PHP_EOL;
+    public static function finish(): never
+    {
+        echo PHP_EOL;
 
-		if(!empty(static::$errors))
-		{
-			printf('Провалено %d из %d:%s', count(static::$errors), static::$count, PHP_EOL);
-			foreach(static::$errors as $error)
-			{
-				echo '  * ', $error, PHP_EOL;
-			}
+        if (!empty(static::$errors)) {
+            printf('Провалено %d из %d:%s', count(static::$errors), static::$count, PHP_EOL);
+            foreach (static::$errors as $error) {
+                echo '  * ', $error, PHP_EOL;
+            }
 
-			exit(1);
-		}
+            exit(1);
+        }
 
-		printf('Проверок пройдено: %d%s', static::$count, PHP_EOL);
-		exit(0);
-	}
+        printf('Проверок пройдено: %d%s', static::$count, PHP_EOL);
+        exit(0);
+    }
 }
 
 Check::boot();

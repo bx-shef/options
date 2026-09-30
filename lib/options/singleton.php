@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Shef\Options\Options;
 
@@ -55,42 +57,45 @@ namespace Shef\Options\Options;
  */
 class Singleton
 {
-	/**
-	 * @var array<class-string, static> по одному экземпляру на класс
-	 *
-	 * Приватное и на базовом классе: общее хранилище для всей иерархии,
-	 * недоступное наследникам напрямую.
-	 */
-	private static array $instances = [];
+    /**
+     * @var array<class-string, static> по одному экземпляру на класс
+     *
+     * Приватное и на базовом классе: общее хранилище для всей иерархии,
+     * недоступное наследникам напрямую.
+     */
+    private static array $instances = [];
 
-	protected function __construct(){}
+    protected function __construct()
+    {
+    }
 
-	protected function __clone(){}
+    protected function __clone()
+    {
+    }
 
-	/**
-	 * Синглетон нельзя воскресить из строки: это обошло бы getInstance() и
-	 * дало бы второй экземпляр.
-	 *
-	 * @throws \Exception всегда
-	 */
-	public function __wakeup()
-	{
-		throw new \Exception("Cannot unserialize config");
-	}
+    /**
+     * Синглетон нельзя воскресить из строки: это обошло бы getInstance() и
+     * дало бы второй экземпляр.
+     *
+     * @throws \Exception всегда
+     */
+    public function __wakeup()
+    {
+        throw new \Exception("Cannot unserialize config");
+    }
 
-	/**
-	 * Экземпляр вызванного класса, создаётся при первом обращении.
-	 *
-	 * @return static
-	 */
-	public static function getInstance(): static
-	{
-		$subclass = static::class;
-		if(!isset(self::$instances[$subclass]))
-		{
-			self::$instances[$subclass] = new static();
-		}
-		
-		return self::$instances[$subclass];
-	}
+    /**
+     * Экземпляр вызванного класса, создаётся при первом обращении.
+     *
+     * @return static
+     */
+    public static function getInstance(): static
+    {
+        $subclass = static::class;
+        if (!isset(self::$instances[$subclass])) {
+            self::$instances[$subclass] = new static();
+        }
+
+        return self::$instances[$subclass];
+    }
 }

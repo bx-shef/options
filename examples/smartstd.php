@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * Объект из массива и обратно.
@@ -40,13 +42,13 @@ use Bitrix\Main\Type\Date;
 step('Массив становится объектом');
 
 $deal = SmartStd::toObject([
-	'title' => 'Поставка',
-	'sum' => 1500,
-	'client' => [
-		'name' => 'ООО «Ромашка»',
-		'inn' => '7701234567',
-	],
-	'tags' => ['новый', 'срочно'],
+    'title' => 'Поставка',
+    'sum' => 1500,
+    'client' => [
+        'name' => 'ООО «Ромашка»',
+        'inn' => '7701234567',
+    ],
+    'tags' => ['новый', 'срочно'],
 ]);
 
 check('корень стал объектом', get_class($deal), SmartStd::class);
@@ -74,13 +76,13 @@ check('доступ по числовому свойству', $list->{'0'}, 'п
 step('Обратно в массив');
 
 check('структура не изменилась', $deal->toArray(), [
-	'title' => 'Поставка',
-	'sum' => 1500,
-	'client' => [
-		'name' => 'ООО «Ромашка»',
-		'inn' => '7701234567',
-	],
-	'tags' => ['новый', 'срочно'],
+    'title' => 'Поставка',
+    'sum' => 1500,
+    'client' => [
+        'name' => 'ООО «Ромашка»',
+        'inn' => '7701234567',
+    ],
+    'tags' => ['новый', 'срочно'],
 ]);
 
 step('Типы ядра разворачиваются сами');
@@ -92,8 +94,8 @@ $document->date = new Date('01.02.2026');
 // Date умеет toString(), и toArray() это использует: в массиве окажется
 // строка, а не объект, — такое уже можно отдать в json или в очередь.
 check('Date стал строкой', $document->toArray(), [
-	'number' => 'СЧ-1',
-	'date' => '01.02.2026',
+    'number' => 'СЧ-1',
+    'date' => '01.02.2026',
 ]);
 
 $inner = new SmartStd();
@@ -105,12 +107,11 @@ $outer->child = $inner;
 check('вложенный SmartStd развернулся', $outer->toArray(), ['child' => ['code' => 'A']]);
 
 $payload = new SmartStd();
-$payload->body = new class implements JsonSerializable
-{
-	public function jsonSerialize(): array
-	{
-		return ['k' => 'v'];
-	}
+$payload->body = new class () implements JsonSerializable {
+    public function jsonSerialize(): array
+    {
+        return ['k' => 'v'];
+    }
 };
 
 check('JsonSerializable тоже развернулся', $payload->toArray(), ['body' => ['k' => 'v']]);

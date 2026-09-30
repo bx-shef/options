@@ -6,11 +6,10 @@ use Bitrix\Main\Result;
 use Bitrix\Main\Error;
 use Bitrix\Main\Loader;
 
-class Deal
-	extends AInstaller
+class Deal extends AInstaller
 {
-	protected static function getUFType(): string
-	{
-		return 'CRM_'.\CCrmOwnerType::DealName;
-	}
+    protected static function getUFType(): string
+    {
+        return 'CRM_'.\CCrmOwnerType::DealName;
+    }
 }

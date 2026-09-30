@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Shef\Options\Main;
 
@@ -7,111 +9,106 @@ namespace Shef\Options\Main;
  */
 class Context
 {
-	public const SCOPE_MANUAL = 'manual';
-	
-	/**
-	 * @memo agents, background jobs
-	 */
-	public const SCOPE_TASK = 'task';
-	public const SCOPE_AUTOMATION = 'automation';
-	public const SCOPE_REST = 'rest';
+    public const SCOPE_MANUAL = 'manual';
 
-	protected $eventId;
-	protected $userId;
-	protected $scope;
-	protected array $itemOptions = [];
+    /**
+     * @memo agents, background jobs
+     */
+    public const SCOPE_TASK = 'task';
+    public const SCOPE_AUTOMATION = 'automation';
+    public const SCOPE_REST = 'rest';
 
-	public function __construct(array $params = [])
-	{
-		foreach($params as $name => $value)
-		{
-			if(property_exists(static::class, $name))
-			{
-				$this->$name = $value;
-			}
-		}
-	}
+    protected $eventId;
+    protected $userId;
+    protected $scope;
+    protected array $itemOptions = [];
 
-	public function setUserId(int $userId): static
-	{
-		$this->userId = $userId;
+    public function __construct(array $params = [])
+    {
+        foreach ($params as $name => $value) {
+            if (property_exists(static::class, $name)) {
+                $this->$name = $value;
+            }
+        }
+    }
 
-		return $this;
-	}
+    public function setUserId(int $userId): static
+    {
+        $this->userId = $userId;
 
-	public function getUserId(): int
-	{
-		if($this->userId !== null)
-		{
-			return (int) $this->userId;
-		}
+        return $this;
+    }
 
-		return $this->getCurrentUserId();
-	}
+    public function getUserId(): int
+    {
+        if ($this->userId !== null) {
+            return (int) $this->userId;
+        }
 
-	public function setScope(string $scope): static
-	{
-		$this->scope = $scope;
+        return $this->getCurrentUserId();
+    }
 
-		return $this;
-	}
+    public function setScope(string $scope): static
+    {
+        $this->scope = $scope;
 
-	public function getScope(): string
-	{
-		if($this->scope)
-		{
-			return (string) $this->scope;
-		}
+        return $this;
+    }
 
-		return static::SCOPE_MANUAL;
-	}
+    public function getScope(): string
+    {
+        if ($this->scope) {
+            return (string) $this->scope;
+        }
 
-	protected function getCurrentUserId(): int
-	{
-		global $USER;
-		if(is_object($USER) && $USER instanceof \CUser)
-		{
-			return (int) Security::getCurrentUserId();
-		}
+        return static::SCOPE_MANUAL;
+    }
 
-		return 0;
-	}
+    protected function getCurrentUserId(): int
+    {
+        global $USER;
+        if (is_object($USER) && $USER instanceof \CUser) {
+            return (int) Security::getCurrentUserId();
+        }
 
-	public function getEventId(): ?string
-	{
-		return $this->eventId;
-	}
+        return 0;
+    }
 
-	public function setEventId(?string $eventId): static
-	{
-		$this->eventId = $eventId;
-		return $this;
-	}
+    public function getEventId(): ?string
+    {
+        return $this->eventId;
+    }
 
-	/**
-	 * @param string $optionName
-	 * @return mixed|null
-	 */
-	public function getItemOption(string $optionName): mixed
-	{
-		$options = $this->getItemOptions();
-		return ($options[$optionName] ?? null);
-	}
+    public function setEventId(?string $eventId): static
+    {
+        $this->eventId = $eventId;
+        return $this;
+    }
 
-	public function getItemOptions(): array
-	{
-		return $this->itemOptions;
-	}
+    /**
+     * @param string $optionName
+     * @return mixed|null
+     */
+    public function getItemOption(string $optionName): mixed
+    {
+        $options = $this->getItemOptions();
+        return ($options[$optionName] ?? null);
+    }
 
-	public function setItemOption(string $optionName, $value): static
-	{
-		$this->itemOptions[$optionName] = $value;
-		return $this;
-	}
+    public function getItemOptions(): array
+    {
+        return $this->itemOptions;
+    }
 
-	public function setItemOptions(array $itemOptions): static
-	{
-		$this->itemOptions = $itemOptions;
-		return $this;
-	}
+    public function setItemOption(string $optionName, $value): static
+    {
+        $this->itemOptions[$optionName] = $value;
+        return $this;
+    }
+
+    public function setItemOptions(array $itemOptions): static
+    {
+        $this->itemOptions = $itemOptions;
+        return $this;
+    }
 }

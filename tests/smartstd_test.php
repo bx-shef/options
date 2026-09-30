@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * SmartStd: превращение массива в объект и обратно, глубокое клонирование.
@@ -27,17 +29,20 @@ Check::same('строковое свойство', $object->code, 'A');
 Check::same('числовое свойство', $object->sort, 100);
 
 $nested = SmartStd::toObject([
-	'code' => 'A',
-	'props' => ['color' => 'красный', 'size' => 'M'],
+    'code' => 'A',
+    'props' => ['color' => 'красный', 'size' => 'M'],
 ]);
 
-Check::same('вложенный ассоциативный массив стал объектом',
-	get_class($nested->props), SmartStd::class);
+Check::same(
+    'вложенный ассоциативный массив стал объектом',
+    get_class($nested->props),
+    SmartStd::class
+);
 Check::same('значение внутри вложенного объекта', $nested->props->color, 'красный');
 
 $withList = SmartStd::toObject([
-	'code' => 'A',
-	'tags' => ['новинка', 'хит'],
+    'code' => 'A',
+    'tags' => ['новинка', 'хит'],
 ]);
 
 Check::same('вложенный список остался массивом', $withList->tags, ['новинка', 'хит']);
@@ -47,8 +52,8 @@ Check::same('вложенный список остался массивом', $
 // больше. На результат это не влияет — разбирается только уровень 0, — но
 // закрепляем, чтобы замена счётчика на что-то другое не прошла незаметно.
 $siblings = SmartStd::toObject([
-	'first' => ['список', 'один'],
-	'second' => ['список', 'два'],
+    'first' => ['список', 'один'],
+    'second' => ['список', 'два'],
 ]);
 
 Check::same('первый сосед', $siblings->first, ['список', 'один']);
@@ -64,13 +69,13 @@ Check::same('доступ по числовому свойству', $rootList->
 Check::group('toArray — объект в массив');
 
 Check::same('простой объект', $nested->toArray(), [
-	'code' => 'A',
-	'props' => ['color' => 'красный', 'size' => 'M'],
+    'code' => 'A',
+    'props' => ['color' => 'красный', 'size' => 'M'],
 ]);
 
 Check::same('список сохраняется списком', $withList->toArray(), [
-	'code' => 'A',
-	'tags' => ['новинка', 'хит'],
+    'code' => 'A',
+    'tags' => ['новинка', 'хит'],
 ]);
 
 Check::group('toArray — типы ядра');
@@ -83,26 +88,28 @@ $inner = new SmartStd();
 $inner->code = 'B';
 $withArrayable = new SmartStd();
 $withArrayable->child = $inner;
-Check::same('вложенный Arrayable разворачивается через toArray',
-	$withArrayable->toArray(), ['child' => ['code' => 'B']]);
+Check::same(
+    'вложенный Arrayable разворачивается через toArray',
+    $withArrayable->toArray(),
+    ['child' => ['code' => 'B']]
+);
 
 $withJson = new SmartStd();
-$withJson->payload = new class implements \JsonSerializable
-{
-	public function jsonSerialize(): array
-	{
-		return ['k' => 'v'];
-	}
+$withJson->payload = new class () implements \JsonSerializable {
+    public function jsonSerialize(): array
+    {
+        return ['k' => 'v'];
+    }
 };
 Check::same('JsonSerializable разворачивается', $withJson->toArray(), ['payload' => ['k' => 'v']]);
 
 Check::group('toObject -> toArray — круговой рейс');
 
 $source = [
-	'code' => 'A',
-	'sort' => 100,
-	'props' => ['color' => 'красный'],
-	'tags' => ['новинка', 'хит'],
+    'code' => 'A',
+    'sort' => 100,
+    'props' => ['color' => 'красный'],
+    'tags' => ['новинка', 'хит'],
 ];
 
 Check::same('структура не изменилась', SmartStd::toObject($source)->toArray(), $source);
@@ -129,23 +136,20 @@ Check::group('значение, не переводимое в json');
 Check::throws(
     'строка не в UTF-8',
     \Bitrix\Main\ArgumentException::class,
-    static fn() => SmartStd::toObject(['name' => "\xC0\xE1\xE2"])->toArray()
+    static fn () => SmartStd::toObject(['name' => "\xC0\xE1\xE2"])->toArray()
 );
 
 Check::throws(
     'INF тоже не переводится',
     \Bitrix\Main\ArgumentException::class,
-    static fn() => SmartStd::toObject(['x' => INF])->toArray()
+    static fn () => SmartStd::toObject(['x' => INF])->toArray()
 );
 
 // Причина в сообщении: без неё отказ не лучше прежнего TypeError.
 $reason = '';
-try
-{
+try {
     SmartStd::toObject(['name' => "\xC0\xE1\xE2"])->toArray();
-}
-catch(\Bitrix\Main\ArgumentException $exception)
-{
+} catch (\Bitrix\Main\ArgumentException $exception) {
     $reason = $exception->getMessage();
 }
 
@@ -189,12 +193,9 @@ $broken = SmartStd::toObject(['name' => "\xC0\xE1\xE2"]);
 $text = '';
 $thrown = '';
 
-try
-{
+try {
     $text = (string)$broken;
-}
-catch(\Throwable $exception)
-{
+} catch (\Throwable $exception) {
     $thrown = get_class($exception);
 }
 

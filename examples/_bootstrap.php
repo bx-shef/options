@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * Обвязка примеров. Сама по себе примером не является.
@@ -38,98 +40,83 @@ $exampleMode = 'заглушки';
  *
  * @var callable(string ...$paths): void $load
  */
-$load = static function(string ...$paths): void {};
+$load = static function (string ...$paths): void {
+};
 
-if('' !== $documentRoot && is_file($prolog))
-{
-	// region Живой портал ////
-	$exampleMode = 'портал';
+if ('' !== $documentRoot && is_file($prolog)) {
+    // region Живой портал ////
+    $exampleMode = 'портал';
 
-	$_SERVER['DOCUMENT_ROOT'] = $documentRoot;
+    $_SERVER['DOCUMENT_ROOT'] = $documentRoot;
 
-	// Примеры ничего не показывают пользователю и не должны попадать в
-	// статистику: это скрипт командной строки, а не страница.
-	if(!defined('NO_KEEP_STATISTIC'))
-	{
-		define('NO_KEEP_STATISTIC', true);
-	}
+    // Примеры ничего не показывают пользователю и не должны попадать в
+    // статистику: это скрипт командной строки, а не страница.
+    if (!defined('NO_KEEP_STATISTIC')) {
+        define('NO_KEEP_STATISTIC', true);
+    }
 
-	if(!defined('NOT_CHECK_PERMISSIONS'))
-	{
-		define('NOT_CHECK_PERMISSIONS', true);
-	}
+    if (!defined('NOT_CHECK_PERMISSIONS')) {
+        define('NOT_CHECK_PERMISSIONS', true);
+    }
 
-	require_once $prolog;
+    require_once $prolog;
 
-	if(!\Bitrix\Main\Loader::includeModule('shef.options'))
-	{
-		fwrite(STDERR, 'Модуль shef.options не установлен на портале '.$documentRoot.PHP_EOL);
-		exit(1);
-	}
-	// endregion ////
-}
-else
-{
-	// region Без портала ////
-	require_once $root.'/tests/stub/bitrix.php';
+    if (!\Bitrix\Main\Loader::includeModule('shef.options')) {
+        fwrite(STDERR, 'Модуль shef.options не установлен на портале '.$documentRoot.PHP_EOL);
+        exit(1);
+    }
+    // endregion ////
+} else {
+    // region Без портала ////
+    require_once $root.'/tests/stub/bitrix.php';
 
-	$load = static function(string ...$paths) use ($root): void
-	{
-		foreach($paths as $path)
-		{
-			require_once $root.'/'.$path;
-		}
-	};
+    $load = static function (string ...$paths) use ($root): void {
+        foreach ($paths as $path) {
+            require_once $root.'/'.$path;
+        }
+    };
 
-	// Песочница для примеров, которым нужна файловая система. На портале
-	// каталог берётся из настроек главного модуля, и подменять его не нужно.
-	if(!defined('BX_TEMPORARY_FILES_DIRECTORY'))
-	{
-		$sandbox = sys_get_temp_dir().'/shef-options-examples-'.getmypid();
+    // Песочница для примеров, которым нужна файловая система. На портале
+    // каталог берётся из настроек главного модуля, и подменять его не нужно.
+    if (!defined('BX_TEMPORARY_FILES_DIRECTORY')) {
+        $sandbox = sys_get_temp_dir().'/shef-options-examples-'.getmypid();
 
-		if(!is_dir($sandbox))
-		{
-			mkdir($sandbox, 0777, true);
-		}
+        if (!is_dir($sandbox)) {
+            mkdir($sandbox, 0777, true);
+        }
 
-		define('BX_TEMPORARY_FILES_DIRECTORY', $sandbox);
+        define('BX_TEMPORARY_FILES_DIRECTORY', $sandbox);
 
-		register_shutdown_function(static function() use ($sandbox): void
-		{
-			$remove = static function(string $dir) use (&$remove): void
-			{
-				if(!is_dir($dir))
-				{
-					return;
-				}
+        register_shutdown_function(static function () use ($sandbox): void {
+            $remove = static function (string $dir) use (&$remove): void {
+                if (!is_dir($dir)) {
+                    return;
+                }
 
-				foreach(scandir($dir) ?: [] as $entry)
-				{
-					if('.' === $entry || '..' === $entry)
-					{
-						continue;
-					}
+                foreach (scandir($dir) ?: [] as $entry) {
+                    if ('.' === $entry || '..' === $entry) {
+                        continue;
+                    }
 
-					$path = $dir.'/'.$entry;
+                    $path = $dir.'/'.$entry;
 
-					if(is_link($path) || is_file($path))
-					{
-						unlink($path);
-						continue;
-					}
+                    if (is_link($path) || is_file($path)) {
+                        unlink($path);
+                        continue;
+                    }
 
-					$remove($path);
-				}
+                    $remove($path);
+                }
 
-				rmdir($dir);
-			};
+                rmdir($dir);
+            };
 
-			$remove($sandbox);
-		});
+            $remove($sandbox);
+        });
 
-		unset($sandbox);
-	}
-	// endregion ////
+        unset($sandbox);
+    }
+    // endregion ////
 }
 
 /**
@@ -146,28 +133,25 @@ error_reporting(E_ALL);
 
 $moduleRoot = dirname(__DIR__);
 
-set_error_handler(static function(int $level, string $message, string $file, int $line) use ($moduleRoot): bool
-{
-	// Заглушённое «@» — не провал: так же поступает и ядро.
-	if(!(error_reporting() & $level))
-	{
-		return false;
-	}
+set_error_handler(static function (int $level, string $message, string $file, int $line) use ($moduleRoot): bool {
+    // Заглушённое «@» — не провал: так же поступает и ядро.
+    if (!(error_reporting() & $level)) {
+        return false;
+    }
 
-	// Deprecation считаем провалом только в своих файлах. Пример гоняется и на
-	// живом портале, а ядро Битрикса на свежем PHP сыплет своими deprecation —
-	// падать на них значит объявлять сломанным модуль за чужую строку в
-	// bitrix/modules/main. Предупреждения и notice роняют пример откуда угодно:
-	// на них пример и заводился.
-	if(
-		$level === E_DEPRECATED
-		&& !str_starts_with($file, $moduleRoot.DIRECTORY_SEPARATOR)
-	)
-	{
-		return false;
-	}
+    // Deprecation считаем провалом только в своих файлах. Пример гоняется и на
+    // живом портале, а ядро Битрикса на свежем PHP сыплет своими deprecation —
+    // падать на них значит объявлять сломанным модуль за чужую строку в
+    // bitrix/modules/main. Предупреждения и notice роняют пример откуда угодно:
+    // на них пример и заводился.
+    if (
+        $level === E_DEPRECATED
+        && !str_starts_with($file, $moduleRoot.DIRECTORY_SEPARATOR)
+    ) {
+        return false;
+    }
 
-	throw new ErrorException($message, 0, $level, $file, $line);
+    throw new ErrorException($message, 0, $level, $file, $line);
 });
 
 $failed = 0;
@@ -175,13 +159,13 @@ $failed = 0;
 /** Заголовок шага. */
 function step(string $title): void
 {
-	echo PHP_EOL, '— ', $title, PHP_EOL;
+    echo PHP_EOL, '— ', $title, PHP_EOL;
 }
 
 /** Пояснение без проверки. */
 function note(string $text): void
 {
-	echo '  ', $text, PHP_EOL;
+    echo '  ', $text, PHP_EOL;
 }
 
 /**
@@ -191,43 +175,41 @@ function note(string $text): void
  */
 function check(string $what, mixed $actual, mixed $expected): void
 {
-	global $failed;
+    global $failed;
 
-	$show = static fn(mixed $value): string => is_object($value)
-		? get_class($value)
-		: var_export($value, true);
+    $show = static fn (mixed $value): string => is_object($value)
+        ? get_class($value)
+        : var_export($value, true);
 
-	if($actual === $expected)
-	{
-		printf("  ok   %s = %s%s", $what, $show($actual), PHP_EOL);
-		return;
-	}
+    if ($actual === $expected) {
+        printf("  ok   %s = %s%s", $what, $show($actual), PHP_EOL);
+        return;
+    }
 
-	$failed++;
-	printf("  FAIL %s: получено %s, обещано %s%s", $what, $show($actual), $show($expected), PHP_EOL);
+    $failed++;
+    printf("  FAIL %s: получено %s, обещано %s%s", $what, $show($actual), $show($expected), PHP_EOL);
 }
 
 /** Шапка примера. */
 function title(string $name): void
 {
-	global $exampleMode;
+    global $exampleMode;
 
-	printf('%s [%s]%s', $name, $exampleMode, PHP_EOL);
+    printf('%s [%s]%s', $name, $exampleMode, PHP_EOL);
 }
 
 /** Итог. Ненулевой код возврата означает, что пример разошёлся с кодом. */
 function done(string $name): never
 {
-	global $failed;
+    global $failed;
 
-	echo PHP_EOL;
+    echo PHP_EOL;
 
-	if($failed > 0)
-	{
-		printf('%s: расхождений %d%s', $name, $failed, PHP_EOL);
-		exit(1);
-	}
+    if ($failed > 0) {
+        printf('%s: расхождений %d%s', $name, $failed, PHP_EOL);
+        exit(1);
+    }
 
-	printf('ГОТОВО: %s%s', $name, PHP_EOL);
-	exit(0);
+    printf('ГОТОВО: %s%s', $name, PHP_EOL);
+    exit(0);
 }

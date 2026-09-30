@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * Документация: ссылки ведут куда обещают, а классы в ней существуют.
@@ -40,43 +42,37 @@ Check::same('git отдал список файлов', $code, 0);
 Check::same('документов нашлось больше пяти', count($markdown) > 5, true);
 
 /** FQCN -> путь файла по тому же соглашению, что и автозагрузка. */
-$toPath = static function(string $fqcn): string
-{
-	return 'lib/'.mb_strtolower(str_replace('\\', '/', mb_substr($fqcn, mb_strlen(VENDOR_PREFIX))));
+$toPath = static function (string $fqcn): string {
+    return 'lib/'.mb_strtolower(str_replace('\\', '/', mb_substr($fqcn, mb_strlen(VENDOR_PREFIX))));
 };
 
 /**
  * Файл класса, каталог namespace либо null.
  */
-$resolve = static function(string $fqcn) use ($root, $toPath): null|string
-{
-	if(!str_starts_with($fqcn, VENDOR_PREFIX))
-	{
-		return null;
-	}
+$resolve = static function (string $fqcn) use ($root, $toPath): null|string {
+    if (!str_starts_with($fqcn, VENDOR_PREFIX)) {
+        return null;
+    }
 
-	$path = $toPath($fqcn);
+    $path = $toPath($fqcn);
 
-	if(is_file($root.'/'.$path.'.php'))
-	{
-		return $path.'.php';
-	}
+    if (is_file($root.'/'.$path.'.php')) {
+        return $path.'.php';
+    }
 
-	if(is_dir($root.'/'.$path))
-	{
-		return $path.'/';
-	}
+    if (is_dir($root.'/'.$path)) {
+        return $path.'/';
+    }
 
-	return null;
+    return null;
 };
 
 /** Метод объявлен в файле? */
-$hasMethod = static function(string $file, string $method) use ($root): bool
-{
-	return 1 === preg_match(
-		'/function\s+'.preg_quote($method, '/').'\s*\(/i',
-		file_get_contents($root.'/'.$file)
-	);
+$hasMethod = static function (string $file, string $method) use ($root): bool {
+    return 1 === preg_match(
+        '/function\s+'.preg_quote($method, '/').'\s*\(/i',
+        file_get_contents($root.'/'.$file)
+    );
 };
 
 Check::group('ссылки');
@@ -85,51 +81,44 @@ $brokenLinks = [];
 $brokenGithub = [];
 $links = 0;
 
-foreach($markdown as $file)
-{
-	$text = file_get_contents($root.'/'.$file);
-	$dir = dirname($file);
+foreach ($markdown as $file) {
+    $text = file_get_contents($root.'/'.$file);
+    $dir = dirname($file);
 
-	preg_match_all('/\]\(([^)\s]+)\)/u', $text, $matches);
+    preg_match_all('/\]\(([^)\s]+)\)/u', $text, $matches);
 
-	foreach($matches[1] as $link)
-	{
-		$links++;
+    foreach ($matches[1] as $link) {
+        $links++;
 
-		// Якорь внутри страницы.
-		if(str_starts_with($link, '#'))
-		{
-			continue;
-		}
+        // Якорь внутри страницы.
+        if (str_starts_with($link, '#')) {
+            continue;
+        }
 
-		// Ссылка на GitHub на файл этого же репозитория: адрес обязан
-		// существовать здесь, иначе на сайте будет 404.
-		if(preg_match('#^https://github\.com/bx-shef/options/blob/[^/]+/(.+)$#', $link, $github))
-		{
-			$target = preg_replace('/#.*$/', '', $github[1]);
+        // Ссылка на GitHub на файл этого же репозитория: адрес обязан
+        // существовать здесь, иначе на сайте будет 404.
+        if (preg_match('#^https://github\.com/bx-shef/options/blob/[^/]+/(.+)$#', $link, $github)) {
+            $target = preg_replace('/#.*$/', '', $github[1]);
 
-			if(!file_exists($root.'/'.$target))
-			{
-				$brokenGithub[] = sprintf('%s -> %s', $file, $link);
-			}
+            if (!file_exists($root.'/'.$target)) {
+                $brokenGithub[] = sprintf('%s -> %s', $file, $link);
+            }
 
-			continue;
-		}
+            continue;
+        }
 
-		// Прочая внешняя ссылка — не наше дело.
-		if(preg_match('#^(?:[a-z][a-z0-9+.\-]*:|//)#i', $link))
-		{
-			continue;
-		}
+        // Прочая внешняя ссылка — не наше дело.
+        if (preg_match('#^(?:[a-z][a-z0-9+.\-]*:|//)#i', $link)) {
+            continue;
+        }
 
-		$target = preg_replace('/#.*$/', '', $link);
-		$path = ('.' === $dir ? $target : $dir.'/'.$target);
+        $target = preg_replace('/#.*$/', '', $link);
+        $path = ('.' === $dir ? $target : $dir.'/'.$target);
 
-		if(false === realpath($root.'/'.$path))
-		{
-			$brokenLinks[] = sprintf('%s -> %s', $file, $link);
-		}
-	}
+        if (false === realpath($root.'/'.$path)) {
+            $brokenLinks[] = sprintf('%s -> %s', $file, $link);
+        }
+    }
 }
 
 // Сторож на случай, если разбор перестанет находить что-либо вовсе.
@@ -146,98 +135,86 @@ $brokenClasses = [];
 $brokenMethods = [];
 $checked = 0;
 
-foreach($markdown as $file)
-{
-	if(in_array($file, $historical, true))
-	{
-		continue;
-	}
+foreach ($markdown as $file) {
+    if (in_array($file, $historical, true)) {
+        continue;
+    }
 
-	$text = file_get_contents($root.'/'.$file);
+    $text = file_get_contents($root.'/'.$file);
 
-	// 4. FQCN в обратных кавычках, с методом или без.
-	//
-	// Скобки после имени метода необязательны и в имя не входят: в тексте
-	// метод пишут и как `Класс::метод`, и как `Класс::метод()`. Вторая форма
-	// встречается чаще, и пока её не разбирали, шесть упоминаний в навыках и
-	// документации не проверялись вовсе.
-	preg_match_all(
-		'/`\\\\?('.preg_quote(VENDOR_PREFIX, '/').'[A-Za-z0-9_\\\\]+(?:::[A-Za-z0-9_]+)?)(?:\(\))?`/u',
-		$text,
-		$matches
-	);
+    // 4. FQCN в обратных кавычках, с методом или без.
+    //
+    // Скобки после имени метода необязательны и в имя не входят: в тексте
+    // метод пишут и как `Класс::метод`, и как `Класс::метод()`. Вторая форма
+    // встречается чаще, и пока её не разбирали, шесть упоминаний в навыках и
+    // документации не проверялись вовсе.
+    preg_match_all(
+        '/`\\\\?('.preg_quote(VENDOR_PREFIX, '/').'[A-Za-z0-9_\\\\]+(?:::[A-Za-z0-9_]+)?)(?:\(\))?`/u',
+        $text,
+        $matches
+    );
 
-	foreach(array_unique($matches[1]) as $reference)
-	{
-		[$class, $method] = array_pad(explode('::', $reference, 2), 2, null);
-		$checked++;
+    foreach (array_unique($matches[1]) as $reference) {
+        [$class, $method] = array_pad(explode('::', $reference, 2), 2, null);
+        $checked++;
 
-		$found = $resolve($class);
+        $found = $resolve($class);
 
-		if(null === $found)
-		{
-			$brokenClasses[] = sprintf('%s :: %s', $file, $reference);
-			continue;
-		}
+        if (null === $found) {
+            $brokenClasses[] = sprintf('%s :: %s', $file, $reference);
+            continue;
+        }
 
-		if(null !== $method && str_ends_with($found, '.php') && !$hasMethod($found, $method))
-		{
-			$brokenMethods[] = sprintf('%s :: %s — метода нет в %s', $file, $reference, $found);
-		}
-	}
+        if (null !== $method && str_ends_with($found, '.php') && !$hasMethod($found, $method)) {
+            $brokenMethods[] = sprintf('%s :: %s — метода нет в %s', $file, $reference, $found);
+        }
+    }
 
-	// 3. Первая колонка таблицы — относительно базы из H1 или её родителя.
-	if(!preg_match('/^#\s+\[`(\\\\?[A-Za-z0-9_\\\\]+)`\]/mu', $text, $heading))
-	{
-		continue;
-	}
+    // 3. Первая колонка таблицы — относительно базы из H1 или её родителя.
+    if (!preg_match('/^#\s+\[`(\\\\?[A-Za-z0-9_\\\\]+)`\]/mu', $text, $heading)) {
+        continue;
+    }
 
-	$base = ltrim($heading[1], '\\');
+    $base = ltrim($heading[1], '\\');
 
-	if(!str_starts_with($base, VENDOR_PREFIX) && $base !== rtrim(VENDOR_PREFIX, '\\'))
-	{
-		continue;
-	}
+    if (!str_starts_with($base, VENDOR_PREFIX) && $base !== rtrim(VENDOR_PREFIX, '\\')) {
+        continue;
+    }
 
-	$parent = implode('\\', array_slice(explode('\\', $base), 0, -1));
+    $parent = implode('\\', array_slice(explode('\\', $base), 0, -1));
 
-	preg_match_all(
-		'/^\|\s*(?:\*\*)?(?:\(enum\) )?([A-Z][A-Za-z0-9_]*(?:\\\\[A-Za-z0-9_]+)*(?:::[A-Za-z0-9_]+)?)(?:\*\*)?\s*\|/mu',
-		$text,
-		$rows
-	);
+    preg_match_all(
+        '/^\|\s*(?:\*\*)?(?:\(enum\) )?([A-Z][A-Za-z0-9_]*(?:\\\\[A-Za-z0-9_]+)*(?:::[A-Za-z0-9_]+)?)(?:\*\*)?\s*\|/mu',
+        $text,
+        $rows
+    );
 
-	foreach(array_unique($rows[1]) as $cell)
-	{
-		[$class, $method] = array_pad(explode('::', $cell, 2), 2, null);
-		$checked++;
+    foreach (array_unique($rows[1]) as $cell) {
+        [$class, $method] = array_pad(explode('::', $cell, 2), 2, null);
+        $checked++;
 
-		$found = null;
-		$tried = [];
+        $found = null;
+        $tried = [];
 
-		foreach([$base, $parent] as $candidate)
-		{
-			$fqcn = $candidate.'\\'.$class;
-			$tried[] = $fqcn;
-			$found = $resolve($fqcn);
+        foreach ([$base, $parent] as $candidate) {
+            $fqcn = $candidate.'\\'.$class;
+            $tried[] = $fqcn;
+            $found = $resolve($fqcn);
 
-			if(null !== $found)
-			{
-				break;
-			}
-		}
+            if (null !== $found) {
+                break;
+            }
+        }
 
-		if(null === $found)
-		{
-			$brokenClasses[] = sprintf('%s :: %s (пробовал %s)', $file, $cell, implode(', ', $tried));
-			continue;
-		}
+        if (null === $found) {
+            $brokenClasses[] = sprintf('%s :: %s (пробовал %s)', $file, $cell, implode(', ', $tried));
+            continue;
+        }
 
-		if(null !== $method && str_ends_with($found, '.php') && !$hasMethod($found, $method))
-		{
-			$brokenMethods[] = sprintf('%s :: %s — метода нет в %s', $file, $cell, $found);
-		}
-	}
+        if (null !== $method && str_ends_with($found, '.php') && !$hasMethod($found, $method)) {
+            $brokenMethods[] = sprintf('%s :: %s — метода нет в %s', $file, $cell, $found);
+        }
+    }
 }
 
 // Тот же сторож: пустая выборка не должна выглядеть успехом.

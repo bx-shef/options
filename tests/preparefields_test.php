@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * Трейт PrepareFields: нормализация строк, разбор чисел и матрица решений
@@ -24,12 +26,12 @@ require_once $root.'/lib/traitlist/tools/preparefields.php';
  */
 class Fields
 {
-	use \Shef\Options\TraitList\Tools\PrepareFields
-	{
-		prepareRowList as public;
-		translit as public;
-		checkField as public;
-	}
+    use \Shef\Options\TraitList\Tools\PrepareFields
+    {
+        prepareRowList as public;
+        translit as public;
+        checkField as public;
+    }
 }
 
 Check::group('parseString — нормализация');
@@ -62,26 +64,46 @@ Check::same('мусор -> 0', Fields::parseInt('не число'), 0);
 
 Check::group('checkField* — матрица решений');
 
-Check::same('значение есть — возвращается как есть',
-	Fields::checkFieldString('Заголовок', ' текст '), 'текст');
-Check::same('значения нет, не обязательно — умолчание',
-	Fields::checkFieldString('Заголовок', null, false, 'умолчание'), 'умолчание');
-Check::same('значения нет, int — умолчание',
-	Fields::checkFieldInt('Количество', null, false, 7), 7);
-Check::same('значения нет, float — умолчание',
-	Fields::checkFieldFloat('Цена', null, false, 1.5), 1.5);
+Check::same(
+    'значение есть — возвращается как есть',
+    Fields::checkFieldString('Заголовок', ' текст '),
+    'текст'
+);
+Check::same(
+    'значения нет, не обязательно — умолчание',
+    Fields::checkFieldString('Заголовок', null, false, 'умолчание'),
+    'умолчание'
+);
+Check::same(
+    'значения нет, int — умолчание',
+    Fields::checkFieldInt('Количество', null, false, 7),
+    7
+);
+Check::same(
+    'значения нет, float — умолчание',
+    Fields::checkFieldFloat('Цена', null, false, 1.5),
+    1.5
+);
 
-Check::throws('значения нет и оно обязательно',
-	\Bitrix\Main\ArgumentNullException::class,
-	static fn() => Fields::checkFieldString('Заголовок', null, true));
+Check::throws(
+    'значения нет и оно обязательно',
+    \Bitrix\Main\ArgumentNullException::class,
+    static fn () => Fields::checkFieldString('Заголовок', null, true)
+);
 
 // Отдельно: «значения нет» и «значение негодного типа» — разные случаи.
 // Первый даёт умолчание, второй тоже, но заметить разницу можно только тут.
 Check::same('массив вместо массива', Fields::checkFieldArray('Список', ['а']), ['а']);
-Check::same('строка вместо массива — умолчание',
-	Fields::checkFieldArray('Список', 'не массив', false, ['по умолчанию']), ['по умолчанию']);
-Check::same('нет значения — умолчание',
-	Fields::checkFieldArray('Список', null, false, ['по умолчанию']), ['по умолчанию']);
+Check::same(
+    'строка вместо массива — умолчание',
+    Fields::checkFieldArray('Список', 'не массив', false, ['по умолчанию']),
+    ['по умолчанию']
+);
+Check::same(
+    'нет значения — умолчание',
+    Fields::checkFieldArray('Список', null, false, ['по умолчанию']),
+    ['по умолчанию']
+);
 
 Check::group('prepareRowList — всегда массив');
 
@@ -94,24 +116,39 @@ $row = ['Цвет' => 'красный'];
 Check::same('скаляр заворачивается', $fields->prepareRowList('Цвет', $row), [0 => 'красный']);
 
 $row = ['Цвет' => ['красный', 'синий']];
-Check::same('список остаётся списком',
-	$fields->prepareRowList('Цвет', $row), ['красный', 'синий']);
+Check::same(
+    'список остаётся списком',
+    $fields->prepareRowList('Цвет', $row),
+    ['красный', 'синий']
+);
 
 $row = ['Цвет' => ['ИМЯ' => 'красный']];
-Check::same('ассоциативный массив без ключа 0 заворачивается',
-	$fields->prepareRowList('Цвет', $row), [0 => ['ИМЯ' => 'красный']]);
+Check::same(
+    'ассоциативный массив без ключа 0 заворачивается',
+    $fields->prepareRowList('Цвет', $row),
+    [0 => ['ИМЯ' => 'красный']]
+);
 
 Check::group('translit');
 
 // Вызов без options не должен сыпать warning: обвязка превращает их в провал.
 $fields->translit('Привет мир');
-Check::same('вызов без options дошёл до ядра',
-	\CUtil::$lastCall['value'], 'Привет мир');
-Check::same('умолчания параметров',
-	\CUtil::$lastCall['params'], ['replace_space' => '-', 'replace_other' => '-']);
+Check::same(
+    'вызов без options дошёл до ядра',
+    \CUtil::$lastCall['value'],
+    'Привет мир'
+);
+Check::same(
+    'умолчания параметров',
+    \CUtil::$lastCall['params'],
+    ['replace_space' => '-', 'replace_other' => '-']
+);
 
 $fields->translit('ёжик', ['str_replace' => ['ж' => 'zh']]);
-Check::same('str_replace применяется до перевода ё',
-	\CUtil::$lastCall['value'], 'yozhик');
+Check::same(
+    'str_replace применяется до перевода ё',
+    \CUtil::$lastCall['value'],
+    'yozhик'
+);
 
 Check::finish();

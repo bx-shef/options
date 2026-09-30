@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Shef\Options\Installator;
 
@@ -7,15 +9,15 @@ namespace Shef\Options\Installator;
  */
 interface IEntity
 {
-	public const EnumN = 'N';
-	public const EnumY = 'Y';
-	
-	public function getId(): int;
-	
-	/**
-	 * Возвращает подготовленные к установке данные
-	 *
-	 * @return array
-	 */
-	public function getInstallSettings(): array;
+    public const EnumN = 'N';
+    public const EnumY = 'Y';
+
+    public function getId(): int;
+
+    /**
+     * Возвращает подготовленные к установке данные
+     *
+     * @return array
+     */
+    public function getInstallSettings(): array;
 }

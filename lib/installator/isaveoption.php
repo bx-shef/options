@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Shef\Options\Installator;
 
@@ -8,21 +10,21 @@ namespace Shef\Options\Installator;
  */
 interface ISaveOption
 {
-	/**
-	 * В какой моудль сохранять
-	 * @return string
-	 */
-	public function getModuleIdForSaveOption(): string;
-	
-	/**
-	 * В какое поле сохранять
-	 * @return string
-	 */
-	public function getCodeForSaveOption(): string;
-	
-	/**
-	 * Какой Id сохранять
-	 * @return int
-	 */
-	public function getId(): int;
+    /**
+     * В какой моудль сохранять
+     * @return string
+     */
+    public function getModuleIdForSaveOption(): string;
+
+    /**
+     * В какое поле сохранять
+     * @return string
+     */
+    public function getCodeForSaveOption(): string;
+
+    /**
+     * Какой Id сохранять
+     * @return int
+     */
+    public function getId(): int;
 }

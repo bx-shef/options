@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Shef\Options\Main\Options;
 
@@ -9,7 +11,7 @@ namespace Shef\Options\Main\Options;
  */
 enum TypeUIAlert: string
 {
-	case Error = 'ui-alert-danger';
-	case Note = 'ui-alert-default';
-	case Warning = 'ui-alert-warning';
+    case Error = 'ui-alert-danger';
+    case Note = 'ui-alert-default';
+    case Warning = 'ui-alert-warning';
 }

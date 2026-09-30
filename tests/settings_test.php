@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * .settings.php: ссылки наружу обязаны никуда не висеть.
@@ -28,12 +30,10 @@ Check::group('структура файла');
 Check::same('.settings.php вернул массив', is_array($settings), true);
 
 $shape = [];
-foreach($settings as $key => $section)
-{
-	if(!is_array($section) || !array_key_exists('value', $section) || !array_key_exists('readonly', $section))
-	{
-		$shape[] = $key;
-	}
+foreach ($settings as $key => $section) {
+    if (!is_array($section) || !array_key_exists('value', $section) || !array_key_exists('readonly', $section)) {
+        $shape[] = $key;
+    }
 }
 
 Check::same('у каждой секции есть value и readonly', $shape, []);
@@ -47,21 +47,18 @@ Check::same('installDir не пуст', !empty($installDir), true);
 $missing = [];
 $wrongTarget = [];
 
-foreach($installDir as $i => $map)
-{
-	$from = (string)($map['from'] ?? '');
-	$to = (string)($map['to'] ?? '');
+foreach ($installDir as $i => $map) {
+    $from = (string)($map['from'] ?? '');
+    $to = (string)($map['to'] ?? '');
 
-	if($from === '' || !is_dir($root.$from))
-	{
-		$missing[] = sprintf('запись %d: каталога %s в репозитории нет', $i, $from);
-	}
+    if ($from === '' || !is_dir($root.$from)) {
+        $missing[] = sprintf('запись %d: каталога %s в репозитории нет', $i, $from);
+    }
 
-	// Каталог модуля браузеру недоступен, поэтому «куда» — всегда под /bitrix/.
-	if(!str_starts_with($to, '/bitrix/'))
-	{
-		$wrongTarget[] = sprintf('запись %d: to = %s', $i, $to);
-	}
+    // Каталог модуля браузеру недоступен, поэтому «куда» — всегда под /bitrix/.
+    if (!str_starts_with($to, '/bitrix/')) {
+        $wrongTarget[] = sprintf('запись %d: to = %s', $i, $to);
+    }
 }
 
 Check::same('каждый from существует', $missing, []);
@@ -74,21 +71,18 @@ $autoload = $settings['registerAutoLoadClasses']['value'] ?? [];
 $brokenPath = [];
 $brokenClass = [];
 
-foreach($autoload as $class => $path)
-{
-	if(!is_file($root.'/'.$path))
-	{
-		$brokenPath[] = sprintf('%s => %s', $class, $path);
-		continue;
-	}
+foreach ($autoload as $class => $path) {
+    if (!is_file($root.'/'.$path)) {
+        $brokenPath[] = sprintf('%s => %s', $class, $path);
+        continue;
+    }
 
-	// Ключ карты — FQCN строчными. Класс в файле обязан быть тот же, иначе
-	// ядро подключит файл и всё равно не найдёт класса.
-	$name = mb_substr((string)$class, mb_strrpos((string)$class, '\\') + 1);
-	if(!preg_match('/\b(class|interface|trait|enum)\s+'.preg_quote($name, '/').'\b/i', file_get_contents($root.'/'.$path)))
-	{
-		$brokenClass[] = sprintf('%s не объявлен в %s', $class, $path);
-	}
+    // Ключ карты — FQCN строчными. Класс в файле обязан быть тот же, иначе
+    // ядро подключит файл и всё равно не найдёт класса.
+    $name = mb_substr((string)$class, mb_strrpos((string)$class, '\\') + 1);
+    if (!preg_match('/\b(class|interface|trait|enum)\s+'.preg_quote($name, '/').'\b/i', file_get_contents($root.'/'.$path))) {
+        $brokenClass[] = sprintf('%s не объявлен в %s', $class, $path);
+    }
 }
 
 Check::same('каждый файл карты на месте', $brokenPath, []);
@@ -100,24 +94,21 @@ $namespaces = $settings['controllers']['value']['namespaces'] ?? [];
 
 $brokenNamespace = [];
 
-foreach($namespaces as $namespace => $prefix)
-{
-	// То же соглашение, что у автозагрузки: первые два сегмента — модуль,
-	// остальные — путь строчными. @see tests/autoload_test.php
-	$relative = ltrim((string)$namespace, '\\');
+foreach ($namespaces as $namespace => $prefix) {
+    // То же соглашение, что у автозагрузки: первые два сегмента — модуль,
+    // остальные — путь строчными. @see tests/autoload_test.php
+    $relative = ltrim((string)$namespace, '\\');
 
-	if(!str_starts_with($relative, 'Shef\\Options\\'))
-	{
-		$brokenNamespace[] = sprintf('%s — чужой namespace', $namespace);
-		continue;
-	}
+    if (!str_starts_with($relative, 'Shef\\Options\\')) {
+        $brokenNamespace[] = sprintf('%s — чужой namespace', $namespace);
+        continue;
+    }
 
-	$dir = 'lib/'.mb_strtolower(str_replace('\\', '/', mb_substr($relative, mb_strlen('Shef\\Options\\'))));
+    $dir = 'lib/'.mb_strtolower(str_replace('\\', '/', mb_substr($relative, mb_strlen('Shef\\Options\\'))));
 
-	if(!is_dir($root.'/'.$dir))
-	{
-		$brokenNamespace[] = sprintf('%s (префикс %s) — каталога %s нет', $namespace, $prefix, $dir);
-	}
+    if (!is_dir($root.'/'.$dir)) {
+        $brokenNamespace[] = sprintf('%s (префикс %s) — каталога %s нет', $namespace, $prefix, $dir);
+    }
 }
 
 Check::same('каждый namespace контроллеров существует', $brokenNamespace, []);

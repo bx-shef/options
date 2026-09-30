@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Shef\Options\TraitList;
 
@@ -11,29 +13,27 @@ use Bitrix\Main\Loader;
  */
 trait Modules
 {
-	/**
-	 * Список модулей для загрузки
-	 * @return string[]
-	 */
-	abstract protected static function getModulesList(): array;
-	
-	/**
-	 * Загрузка модулей
-	 * @return Result
-	 * @throws \Bitrix\Main\LoaderException
-	 */
-	protected static function includeModules(): Result
-	{
-		$result = new Result;
+    /**
+     * Список модулей для загрузки
+     * @return string[]
+     */
+    abstract protected static function getModulesList(): array;
 
-		foreach(static::getModulesList() as $module)
-		{
-			if(!Loader::includeModule($module))
-			{
-				return $result->addError(new Error('module '.$module.' not loaded'));
-			}
-		}
+    /**
+     * Загрузка модулей
+     * @return Result
+     * @throws \Bitrix\Main\LoaderException
+     */
+    protected static function includeModules(): Result
+    {
+        $result = new Result();
 
-		return $result;
-	}
+        foreach (static::getModulesList() as $module) {
+            if (!Loader::includeModule($module)) {
+                return $result->addError(new Error('module '.$module.' not loaded'));
+            }
+        }
+
+        return $result;
+    }
 }

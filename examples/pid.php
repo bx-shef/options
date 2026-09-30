@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * Блокировка процесса через pid-файл.
@@ -37,10 +39,10 @@ require_once __DIR__.'/_bootstrap.php';
 title('Блокировка процесса через pid-файл');
 
 $load(
-	'lib/options/singleton.php',
-	'lib/main/constants.php',
-	'lib/main/tempfile/manager.php',
-	'lib/main/tempfile/pid.php'
+    'lib/options/singleton.php',
+    'lib/main/constants.php',
+    'lib/main/tempfile/manager.php',
+    'lib/main/tempfile/pid.php'
 );
 
 use Bitrix\Main\IO;
@@ -55,27 +57,21 @@ const GROUP = 'example-pid';
  * Берём настоящий завершившийся процесс: его номер гарантированно свободен.
  * Это не часть API модуля — просто нужен «мёртвый» pid, чтобы показать чистку.
  */
-$deadPid = static function(): int
-{
-	if(function_exists('shell_exec'))
-	{
-		try
-		{
-			$pid = (int)shell_exec(PHP_BINARY.' -r "echo getmypid();"');
+$deadPid = static function (): int {
+    if (function_exists('shell_exec')) {
+        try {
+            $pid = (int)shell_exec(PHP_BINARY.' -r "echo getmypid();"');
 
-			if($pid > 0 && !is_dir('/proc/'.$pid))
-			{
-				return $pid;
-			}
-		}
-		catch(Throwable)
-		{
-			// shell_exec запрещён — пойдём запасным путём.
-		}
-	}
+            if ($pid > 0 && !is_dir('/proc/'.$pid)) {
+                return $pid;
+            }
+        } catch (Throwable) {
+            // shell_exec запрещён — пойдём запасным путём.
+        }
+    }
 
-	// Запасной путь: номер за пределами обычного диапазона.
-	return 4194303;
+    // Запасной путь: номер за пределами обычного диапазона.
+    return 4194303;
 };
 // endregion ////
 
@@ -137,9 +133,9 @@ note('Правило: когда выяснить, жив ли процесс, �
 note('блокировка — это задержка, лишнее удаление — два процесса там, где');
 note('должен быть один.');
 note('Это окружение: /proc '.(is_dir('/proc') ? 'есть' : 'НЕТ')
-	.', ext-posix '.(extension_loaded('posix') ? 'есть' : 'НЕТ')
-	.'. Если нет ни того, ни другого, шаг «убран ровно один файл» выше'
-	.' падает — и вот почему.');
+    .', ext-posix '.(extension_loaded('posix') ? 'есть' : 'НЕТ')
+    .'. Если нет ни того, ни другого, шаг «убран ровно один файл» выше'
+    .' падает — и вот почему.');
 
 step('Убрать свою блокировку');
 

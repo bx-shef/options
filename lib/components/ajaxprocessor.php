@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Shef\Options\Components;
 
@@ -16,54 +18,52 @@ Loc::loadMessages(__FILE__);
 /**
  * Абстракция для обработки ajax запросов вне компонента
  */
-abstract class AjaxProcessor
-	extends Controller
+abstract class AjaxProcessor extends Controller
 {
-	use TraitList\Modules;
-	
-	abstract protected static function getModulesList(): array;
-	
-	/**
-	 * @throws LoaderException
-	 */
-	protected function init(): void
-	{
-		parent::init();
-		
-		$response = $this->includeModules();
-		if(!$response->isSuccess())
-		{
-			$this->addErrors($response->getErrors());
-		}
-	}
-	
-	/**
-	 * Возвращает список действий для AJAX
-	 * @return array[]
-	 *
-	 * <code>
-	 * return [
-	 * 	'demo' => $this->getConfigureActionsDefFilter()
-	 * ];
-	 * </code>
-	 */
-	public function configureActions(): array
-	{
-		return parent::configureActions();
-	}
-	
-	/**
-	 * Название компонента
-	 *
-	 * @return string
-	 */
-	abstract protected static function getComponentName(): string;
-	
-	/**
-	 * @throws ArgumentNullException
-	 */
-	protected function createComponentBuilder(): Builder
-	{
-		return new Builder(static::getComponentName());
-	}
+    use TraitList\Modules;
+
+    abstract protected static function getModulesList(): array;
+
+    /**
+     * @throws LoaderException
+     */
+    protected function init(): void
+    {
+        parent::init();
+
+        $response = $this->includeModules();
+        if (!$response->isSuccess()) {
+            $this->addErrors($response->getErrors());
+        }
+    }
+
+    /**
+     * Возвращает список действий для AJAX
+     * @return array[]
+     *
+     * <code>
+     * return [
+     *     'demo' => $this->getConfigureActionsDefFilter()
+     * ];
+     * </code>
+     */
+    public function configureActions(): array
+    {
+        return parent::configureActions();
+    }
+
+    /**
+     * Название компонента
+     *
+     * @return string
+     */
+    abstract protected static function getComponentName(): string;
+
+    /**
+     * @throws ArgumentNullException
+     */
+    protected function createComponentBuilder(): Builder
+    {
+        return new Builder(static::getComponentName());
+    }
 }

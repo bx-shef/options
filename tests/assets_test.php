@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * Сходимость публичных путей фронта.
@@ -27,13 +29,13 @@ require_once $root.'/tests/assert.php';
  */
 class CJSCore
 {
-	/** @var array<string, array> */
-	public static array $registered = [];
+    /** @var array<string, array> */
+    public static array $registered = [];
 
-	public static function RegisterExt(string $name, array $params): void
-	{
-		static::$registered[$name] = $params;
-	}
+    public static function RegisterExt(string $name, array $params): void
+    {
+        static::$registered[$name] = $params;
+    }
 }
 // endregion ////
 
@@ -61,25 +63,21 @@ Check::same('installDir не пуст — установщику есть что
  * Обратное отображение публичного пути в исходный файл репозитория по той же
  * карте, которой пользуется установщик.
  */
-$toSource = static function(string $publicPath) use ($installDir): null|string
-{
-	foreach($installDir as $map)
-	{
-		$to = (string)($map['to'] ?? '');
-		$from = (string)($map['from'] ?? '');
+$toSource = static function (string $publicPath) use ($installDir): null|string {
+    foreach ($installDir as $map) {
+        $to = (string)($map['to'] ?? '');
+        $from = (string)($map['from'] ?? '');
 
-		if($to === '' || $from === '')
-		{
-			continue;
-		}
+        if ($to === '' || $from === '') {
+            continue;
+        }
 
-		if(str_starts_with($publicPath, $to.'/'))
-		{
-			return $from.mb_substr($publicPath, mb_strlen($to));
-		}
-	}
+        if (str_starts_with($publicPath, $to.'/')) {
+            return $from.mb_substr($publicPath, mb_strlen($to));
+        }
+    }
 
-	return null;
+    return null;
 };
 
 Check::group('имена каталогов в install/');
@@ -89,23 +87,24 @@ Check::group('имена каталогов в install/');
  * и имя расширения Битрикса. Переименуют каталог — файлы лягут мимо, а ошибки
  * установки при этом не будет.
  */
-$topLevelDirs = static function(string $sourceDir) use ($root): array
-{
-	$path = $root.'/'.$sourceDir;
+$topLevelDirs = static function (string $sourceDir) use ($root): array {
+    $path = $root.'/'.$sourceDir;
 
-	if(!is_dir($path))
-	{
-		return [];
-	}
+    if (!is_dir($path)) {
+        return [];
+    }
 
-	return array_values(array_filter(
-		scandir($path),
-		static fn(string $entry): bool => '.' !== $entry && '..' !== $entry && is_dir($path.'/'.$entry)
-	));
+    return array_values(array_filter(
+        scandir($path),
+        static fn (string $entry): bool => '.' !== $entry && '..' !== $entry && is_dir($path.'/'.$entry)
+    ));
 };
 
-Check::same('install/css содержит ровно каталог публичного пути',
-	$topLevelDirs('install/css'), [basename(Constants::getPublicCssDir())]);
+Check::same(
+    'install/css содержит ровно каталог публичного пути',
+    $topLevelDirs('install/css'),
+    [basename(Constants::getPublicCssDir())]
+);
 
 // Своего JS в поставке нет — и каталога install/js быть не должно: пустая
 // запись в installDir копировала бы пустоту, а непустая уехала бы мимо всех
@@ -118,36 +117,31 @@ Check::same('register-js.php зарегистрировал расширение
 
 $broken = [];
 
-foreach(CJSCore::$registered as $extension => $params)
-{
-	foreach(['css', 'js'] as $kind)
-	{
-		foreach((array)($params[$kind] ?? []) as $publicPath)
-		{
-			$publicPath = (string)$publicPath;
-			$source = $toSource($publicPath);
+foreach (CJSCore::$registered as $extension => $params) {
+    foreach (['css', 'js'] as $kind) {
+        foreach ((array)($params[$kind] ?? []) as $publicPath) {
+            $publicPath = (string)$publicPath;
+            $source = $toSource($publicPath);
 
-			if(null === $source)
-			{
-				$broken[] = sprintf(
-					'%s: путь %s не покрыт ни одной записью installDir — установщик его никуда не положит',
-					$extension,
-					$publicPath
-				);
-				continue;
-			}
+            if (null === $source) {
+                $broken[] = sprintf(
+                    '%s: путь %s не покрыт ни одной записью installDir — установщик его никуда не положит',
+                    $extension,
+                    $publicPath
+                );
+                continue;
+            }
 
-			if(!is_file($root.$source))
-			{
-				$broken[] = sprintf(
-					'%s: странице нужен %s, то есть файл %s, а его в репозитории нет',
-					$extension,
-					$publicPath,
-					$source
-				);
-			}
-		}
-	}
+            if (!is_file($root.$source)) {
+                $broken[] = sprintf(
+                    '%s: странице нужен %s, то есть файл %s, а его в репозитории нет',
+                    $extension,
+                    $publicPath,
+                    $source
+                );
+            }
+        }
+    }
 }
 
 Check::same('каждый файл расширения лежит там, куда его положит установщик', $broken, []);

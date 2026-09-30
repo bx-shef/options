@@ -1,9 +1,10 @@
 <?php
+
 namespace Shef\Options;
 
 use Bitrix\Main\Result;
 
 interface ITest
 {
-	public function check(): Result;
+    public function check(): Result;
 }

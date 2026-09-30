@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * Constants: разбор настройки «служебный пользователь».
@@ -22,13 +24,12 @@ use Shef\Options\Main\Constants;
 use Bitrix\Main\Config\Option;
 
 /** Значение настройки для одной проверки. */
-$withOption = static function(mixed $value): int
-{
-	Option::set(Constants::MODULE_ID, 'DEF_systemuserid', $value);
-	$id = Constants::getSystemUserId();
-	Option::forget(Constants::MODULE_ID, 'DEF_systemuserid');
+$withOption = static function (mixed $value): int {
+    Option::set(Constants::MODULE_ID, 'DEF_systemuserid', $value);
+    $id = Constants::getSystemUserId();
+    Option::forget(Constants::MODULE_ID, 'DEF_systemuserid');
 
-	return $id;
+    return $id;
 };
 
 Check::group('настройка не заполнена');

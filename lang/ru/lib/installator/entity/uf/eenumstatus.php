@@ -1,4 +1,5 @@
 <?php
+
 $MESS['shef.options_Installator_UF_EnumStatus_Undefined'] = 'Не определен';
 $MESS['shef.options_Installator_UF_EnumStatus_New'] = 'Не обработано';
 $MESS['shef.options_Installator_UF_EnumStatus_Process'] = 'Обработка';

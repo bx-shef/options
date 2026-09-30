@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * Соглашение автозагрузки: класс обязан лежать там, где его будет искать ядро.
@@ -37,112 +39,93 @@ const VENDOR_PREFIX = 'Shef\\Options\\';
  *
  * @return array{namespace: string, names: string[]}
  */
-$declarations = static function(string $file): array
-{
-	$tokens = token_get_all(file_get_contents($file));
-	$total = count($tokens);
-	$namespace = '';
-	$names = [];
+$declarations = static function (string $file): array {
+    $tokens = token_get_all(file_get_contents($file));
+    $total = count($tokens);
+    $namespace = '';
+    $names = [];
 
-	/** Ближайший значащий токен слева. */
-	$before = static function(int $i) use ($tokens): mixed
-	{
-		for($j = $i - 1; $j >= 0; $j--)
-		{
-			if(is_array($tokens[$j]) && in_array($tokens[$j][0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true))
-			{
-				continue;
-			}
+    /** Ближайший значащий токен слева. */
+    $before = static function (int $i) use ($tokens): mixed {
+        for ($j = $i - 1; $j >= 0; $j--) {
+            if (is_array($tokens[$j]) && in_array($tokens[$j][0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) {
+                continue;
+            }
 
-			return $tokens[$j];
-		}
+            return $tokens[$j];
+        }
 
-		return null;
-	};
+        return null;
+    };
 
-	for($i = 0; $i < $total; $i++)
-	{
-		$token = $tokens[$i];
+    for ($i = 0; $i < $total; $i++) {
+        $token = $tokens[$i];
 
-		if(!is_array($token))
-		{
-			continue;
-		}
+        if (!is_array($token)) {
+            continue;
+        }
 
-		if(T_NAMESPACE === $token[0])
-		{
-			for($j = $i + 1; $j < $total; $j++)
-			{
-				if(is_array($tokens[$j]) && in_array($tokens[$j][0], [T_STRING, T_NAME_QUALIFIED], true))
-				{
-					$namespace = $tokens[$j][1];
-					break;
-				}
+        if (T_NAMESPACE === $token[0]) {
+            for ($j = $i + 1; $j < $total; $j++) {
+                if (is_array($tokens[$j]) && in_array($tokens[$j][0], [T_STRING, T_NAME_QUALIFIED], true)) {
+                    $namespace = $tokens[$j][1];
+                    break;
+                }
 
-				if(';' === $tokens[$j] || '{' === $tokens[$j])
-				{
-					break;
-				}
-			}
+                if (';' === $tokens[$j] || '{' === $tokens[$j]) {
+                    break;
+                }
+            }
 
-			continue;
-		}
+            continue;
+        }
 
-		if(!in_array($token[0], [T_CLASS, T_INTERFACE, T_TRAIT, T_ENUM], true))
-		{
-			continue;
-		}
+        if (!in_array($token[0], [T_CLASS, T_INTERFACE, T_TRAIT, T_ENUM], true)) {
+            continue;
+        }
 
-		$previous = $before($i);
+        $previous = $before($i);
 
-		// Foo::class — обращение, а не объявление.
-		if(is_array($previous) && T_DOUBLE_COLON === $previous[0])
-		{
-			continue;
-		}
+        // Foo::class — обращение, а не объявление.
+        if (is_array($previous) && T_DOUBLE_COLON === $previous[0]) {
+            continue;
+        }
 
-		// new class {...} — анонимный класс, имени у него нет.
-		if(is_array($previous) && T_NEW === $previous[0])
-		{
-			continue;
-		}
+        // new class {...} — анонимный класс, имени у него нет.
+        if (is_array($previous) && T_NEW === $previous[0]) {
+            continue;
+        }
 
-		for($j = $i + 1; $j < $total; $j++)
-		{
-			if(is_array($tokens[$j]) && T_STRING === $tokens[$j][0])
-			{
-				$names[] = $tokens[$j][1];
-				break;
-			}
+        for ($j = $i + 1; $j < $total; $j++) {
+            if (is_array($tokens[$j]) && T_STRING === $tokens[$j][0]) {
+                $names[] = $tokens[$j][1];
+                break;
+            }
 
-			if(is_array($tokens[$j]) && T_WHITESPACE === $tokens[$j][0])
-			{
-				continue;
-			}
+            if (is_array($tokens[$j]) && T_WHITESPACE === $tokens[$j][0]) {
+                continue;
+            }
 
-			break;
-		}
-	}
+            break;
+        }
+    }
 
-	return ['namespace' => $namespace, 'names' => $names];
+    return ['namespace' => $namespace, 'names' => $names];
 };
 
 /** Путь, по которому ядро будет искать класс. */
-$expectedPath = static function(string $fqcn): string
-{
-	return 'lib/'.mb_strtolower(str_replace('\\', '/', mb_substr($fqcn, mb_strlen(VENDOR_PREFIX)))).'.php';
+$expectedPath = static function (string $fqcn): string {
+    return 'lib/'.mb_strtolower(str_replace('\\', '/', mb_substr($fqcn, mb_strlen(VENDOR_PREFIX)))).'.php';
 };
 
 $files = [];
 $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root.'/lib'));
-foreach($iterator as $file)
-{
-	if($file->isDir() || 'php' !== $file->getExtension())
-	{
-		continue;
-	}
+foreach ($iterator as $file) {
+    if ($file->isDir() || 'php' !== $file->getExtension()) {
+        continue;
+    }
 
-	$files[] = mb_substr($file->getPathname(), mb_strlen($root) + 1);
+    $files[] = mb_substr($file->getPathname(), mb_strlen($root) + 1);
 }
 
 sort($files);
@@ -155,28 +138,24 @@ $misplaced = [];
 $foreign = [];
 $byFqcn = [];
 
-foreach($files as $path)
-{
-	$found = $declarations($root.'/'.$path);
+foreach ($files as $path) {
+    $found = $declarations($root.'/'.$path);
 
-	foreach($found['names'] as $name)
-	{
-		$fqcn = $found['namespace'].'\\'.$name;
+    foreach ($found['names'] as $name) {
+        $fqcn = $found['namespace'].'\\'.$name;
 
-		if(!str_starts_with($fqcn, VENDOR_PREFIX))
-		{
-			$foreign[] = $path.' => '.$fqcn;
-			continue;
-		}
+        if (!str_starts_with($fqcn, VENDOR_PREFIX)) {
+            $foreign[] = $path.' => '.$fqcn;
+            continue;
+        }
 
-		$byFqcn[$fqcn][] = $path;
+        $byFqcn[$fqcn][] = $path;
 
-		$expected = $expectedPath($fqcn);
-		if($expected !== $path)
-		{
-			$misplaced[] = sprintf('%s объявляет %s, ядро ищет его в %s', $path, $fqcn, $expected);
-		}
-	}
+        $expected = $expectedPath($fqcn);
+        if ($expected !== $path) {
+            $misplaced[] = sprintf('%s объявляет %s, ядро ищет его в %s', $path, $fqcn, $expected);
+        }
+    }
 }
 
 Check::same('классов разобрано больше сотни', count($byFqcn) > 100, true);
@@ -184,12 +163,10 @@ Check::same('каждый класс лежит там, где его ищет �
 Check::same('чужих namespace в lib/ нет', $foreign, []);
 
 $duplicates = [];
-foreach($byFqcn as $fqcn => $paths)
-{
-	if(count($paths) > 1)
-	{
-		$duplicates[] = $fqcn.' объявлен в: '.implode(', ', $paths);
-	}
+foreach ($byFqcn as $fqcn => $paths) {
+    if (count($paths) > 1) {
+        $duplicates[] = $fqcn.' объявлен в: '.implode(', ', $paths);
+    }
 }
 
 Check::same('один класс — один файл', $duplicates, []);
