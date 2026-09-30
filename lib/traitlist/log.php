@@ -1,4 +1,5 @@
 <?php
+
 namespace Shef\Options\TraitList;
 
 /**
@@ -10,27 +11,25 @@ namespace Shef\Options\TraitList;
  */
 trait Log
 {
-	protected static function isSkipLog(): bool
-	{
-		return true;
-	}
+    protected static function isSkipLog(): bool
+    {
+        return true;
+    }
 
-	protected static function getLogFile(): string
-	{
-		return 'shef-options-trait-list-Events';
-	}
+    protected static function getLogFile(): string
+    {
+        return 'shef-options-trait-list-Events';
+    }
 
-	protected static function log(
-		array $value = [],
-		bool $isNotSkip = false
-	): void
-	{
-		// skip log ////
-		if(!$isNotSkip && static::isSkipLog())
-		{
-			return;
-		}
+    protected static function log(
+        array $value = [],
+        bool $isNotSkip = false
+    ): void {
+        // skip log ////
+        if (!$isNotSkip && static::isSkipLog()) {
+            return;
+        }
 
-		_log($value, static::getLogFile());
-	}
+        _log($value, static::getLogFile());
+    }
 }

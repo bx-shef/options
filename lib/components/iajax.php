@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Shef\Options\Components;
 
@@ -7,5 +9,5 @@ namespace Shef\Options\Components;
  */
 interface IAjax
 {
-	public static function getSelfAjaxClassWithNamespace(): string;
+    public static function getSelfAjaxClassWithNamespace(): string;
 }

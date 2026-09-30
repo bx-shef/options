@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * Настраиваемые параметры модуля
@@ -22,46 +24,46 @@
  */
 
 return [
-	'requireModules' => [
-		'value' => [],
-		'readonly' => true,
-	],
-	'requirePhpExt' => [
-		'value' => [],
-		'readonly' => true,
-	],
-	'registerAutoLoadClasses' => [
-		'value' => [],
-		'readonly' => true,
-	],
-	'registerNamespace' => [
-		'value' => [],
-		'readonly' => true,
-	],
-	'options' => [
-		'value' => [],
-		'readonly' => true,
-	],
-	'installEvents' => [
-		'value' => [],
-		'readonly' => true,
-	],
-	'installDir' => [
-		'value' => [
-			[
-				'type' => 'css',
-				'from' => '/install/css',
-				'to' => '/bitrix/css',
-				'customPathUnInstall' => [],
-				'isNeedUnInstall' => true,
-			],
-		],
-		'readonly' => true,
-	],
-	'controllers' => [
-		'value' => [
-			'namespaces' => [],
-		],
-		'readonly' => true,
-	]
+    'requireModules' => [
+        'value' => [],
+        'readonly' => true,
+    ],
+    'requirePhpExt' => [
+        'value' => [],
+        'readonly' => true,
+    ],
+    'registerAutoLoadClasses' => [
+        'value' => [],
+        'readonly' => true,
+    ],
+    'registerNamespace' => [
+        'value' => [],
+        'readonly' => true,
+    ],
+    'options' => [
+        'value' => [],
+        'readonly' => true,
+    ],
+    'installEvents' => [
+        'value' => [],
+        'readonly' => true,
+    ],
+    'installDir' => [
+        'value' => [
+            [
+                'type' => 'css',
+                'from' => '/install/css',
+                'to' => '/bitrix/css',
+                'customPathUnInstall' => [],
+                'isNeedUnInstall' => true,
+            ],
+        ],
+        'readonly' => true,
+    ],
+    'controllers' => [
+        'value' => [
+            'namespaces' => [],
+        ],
+        'readonly' => true,
+    ]
 ];

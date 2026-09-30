@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * Примеры обязаны работать — иначе это не примеры, а рассказ о них.
@@ -29,25 +31,23 @@ require_once $root.'/tests/assert.php';
 
 /** Разделы, которые обязана содержать шапка примера. */
 const REQUIRED_SECTIONS = [
-	'ЦЕЛЬ',
-	'ГДЕ ПРИМЕНЯТЬ',
-	'ЧТО ДОЛЖНО ПОЛУЧИТЬСЯ',
-	'ЗАПУСК',
+    'ЦЕЛЬ',
+    'ГДЕ ПРИМЕНЯТЬ',
+    'ЧТО ДОЛЖНО ПОЛУЧИТЬСЯ',
+    'ЗАПУСК',
 ];
 
 $examples = [];
 
-foreach(glob($root.'/examples/*.php') ?: [] as $path)
-{
-	$name = basename($path, '.php');
+foreach (glob($root.'/examples/*.php') ?: [] as $path) {
+    $name = basename($path, '.php');
 
-	// Обвязка примером не является: она их запускает.
-	if(str_starts_with($name, '_'))
-	{
-		continue;
-	}
+    // Обвязка примером не является: она их запускает.
+    if (str_starts_with($name, '_')) {
+        continue;
+    }
 
-	$examples[$name] = $path;
+    $examples[$name] = $path;
 }
 
 ksort($examples);
@@ -62,55 +62,51 @@ Check::group('инструкция у каждого примера');
 
 $withoutSection = [];
 
-foreach($examples as $name => $path)
-{
-	$text = file_get_contents($path);
+foreach ($examples as $name => $path) {
+    $text = file_get_contents($path);
 
-	foreach(REQUIRED_SECTIONS as $section)
-	{
-		if(!str_contains($text, $section))
-		{
-			$withoutSection[] = sprintf('%s: нет раздела «%s»', $name, $section);
-		}
-	}
+    foreach (REQUIRED_SECTIONS as $section) {
+        if (!str_contains($text, $section)) {
+            $withoutSection[] = sprintf('%s: нет раздела «%s»', $name, $section);
+        }
+    }
 }
 
 Check::same('в шапке есть цель, применение, результат и запуск', $withoutSection, []);
 
 Check::group('прогон');
 
-foreach($examples as $name => $path)
-{
-	// DOCUMENT_ROOT пуст намеренно: гоняем на заглушках, а не на портале.
-	$command = sprintf(
-		'DOCUMENT_ROOT= %s %s 2>&1',
-		escapeshellarg(PHP_BINARY),
-		escapeshellarg($path)
-	);
+foreach ($examples as $name => $path) {
+    // DOCUMENT_ROOT пуст намеренно: гоняем на заглушках, а не на портале.
+    $command = sprintf(
+        'DOCUMENT_ROOT= %s %s 2>&1',
+        escapeshellarg(PHP_BINARY),
+        escapeshellarg($path)
+    );
 
-	$output = [];
-	$code = 0;
-	exec($command, $output, $code);
+    $output = [];
+    $code = 0;
+    exec($command, $output, $code);
 
-	$text = implode(PHP_EOL, $output);
+    $text = implode(PHP_EOL, $output);
 
-	Check::same($name.': код возврата', $code, 0);
-	Check::same($name.': дошёл до конца', str_contains($text, 'ГОТОВО: '.$name), true);
+    Check::same($name.': код возврата', $code, 0);
+    Check::same($name.': дошёл до конца', str_contains($text, 'ГОТОВО: '.$name), true);
 
-	$noise = array_values(array_filter(
-		$output,
-		static fn(string $line): bool => (bool)preg_match('/\b(Warning|Notice|Deprecated|Fatal error)\b/u', $line)
-	));
+    $noise = array_values(array_filter(
+        $output,
+        static fn (string $line): bool => (bool)preg_match('/\b(Warning|Notice|Deprecated|Fatal error)\b/u', $line)
+    ));
 
-	Check::same($name.': без warning и notice', $noise, []);
+    Check::same($name.': без warning и notice', $noise, []);
 
-	// На случай, если пример когда-нибудь перестанет возвращать код возврата.
-	$failures = array_values(array_filter(
-		$output,
-		static fn(string $line): bool => str_contains($line, 'FAIL')
-	));
+    // На случай, если пример когда-нибудь перестанет возвращать код возврата.
+    $failures = array_values(array_filter(
+        $output,
+        static fn (string $line): bool => str_contains($line, 'FAIL')
+    ));
 
-	Check::same($name.': обещания сошлись', $failures, []);
+    Check::same($name.': обещания сошлись', $failures, []);
 }
 
 Check::finish();

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Shef\Options\Components\Actions;
@@ -18,11 +19,10 @@ namespace Shef\Options\Components\Actions;
  * правят умолчания, а не заменяют их (см. Free). Голый «prefilters» пишем,
  * только когда набор фильтров задаётся целиком и осознанно.
  */
-class Normal
-	implements IActionsFilterList
+class Normal implements IActionsFilterList
 {
-	public static function get(): array
-	{
-		return [];
-	}
+    public static function get(): array
+    {
+        return [];
+    }
 }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Shef\Options\TraitList\Constants;
 
@@ -7,8 +9,8 @@ namespace Shef\Options\TraitList\Constants;
  */
 trait User
 {
-	public static function getSystemUserId(): int
-	{
-		return \Shef\Options\Main\Security::getSystemUserId();
-	}
+    public static function getSystemUserId(): int
+    {
+        return \Shef\Options\Main\Security::getSystemUserId();
+    }
 }

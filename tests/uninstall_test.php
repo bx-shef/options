@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * Удаление модуля уносит его настройки.
@@ -32,61 +34,57 @@ require_once $root.'/tests/assert.php';
  */
 class CoreCalls
 {
-	/** @var list<string> */
-	public static array $unregistered = [];
+    /** @var list<string> */
+    public static array $unregistered = [];
 
-	/** @var int */
-	public static int $cacheCleaned = 0;
+    /** @var int */
+    public static int $cacheCleaned = 0;
 
-	public static function reset(): void
-	{
-		static::$unregistered = [];
-		static::$cacheCleaned = 0;
-	}
+    public static function reset(): void
+    {
+        static::$unregistered = [];
+        static::$cacheCleaned = 0;
+    }
 }
 
-if(!class_exists('CModule'))
-{
-	class CModule
-	{
-	}
+if (!class_exists('CModule')) {
+    class CModule
+    {
+    }
 }
 
-if(!function_exists('IsModuleInstalled'))
-{
-	/** Intranet на стенде теста нет — левое меню уходит в ранний возврат. */
-	function IsModuleInstalled(string $moduleId): bool
-	{
-		return false;
-	}
+if (!function_exists('IsModuleInstalled')) {
+    /** Intranet на стенде теста нет — левое меню уходит в ранний возврат. */
+    function IsModuleInstalled(string $moduleId): bool
+    {
+        return false;
+    }
 }
 
-if(!function_exists('UnRegisterModule'))
-{
-	function UnRegisterModule(string $moduleId): void
-	{
-		CoreCalls::$unregistered[] = $moduleId;
-	}
+if (!function_exists('UnRegisterModule')) {
+    function UnRegisterModule(string $moduleId): void
+    {
+        CoreCalls::$unregistered[] = $moduleId;
+    }
 }
 
-if(!function_exists('RegisterModule'))
-{
-	function RegisterModule(string $moduleId): void
-	{
-	}
+if (!function_exists('RegisterModule')) {
+    function RegisterModule(string $moduleId): void
+    {
+    }
 }
 
-$GLOBALS['APPLICATION'] = new class
-{
-	public function ThrowException(string $message): void {}
+$GLOBALS['APPLICATION'] = new class () {
+    public function ThrowException(string $message): void
+    {
+    }
 };
 
-$GLOBALS['CACHE_MANAGER'] = new class
-{
-	public function CleanAll(): void
-	{
-		CoreCalls::$cacheCleaned++;
-	}
+$GLOBALS['CACHE_MANAGER'] = new class () {
+    public function CleanAll(): void
+    {
+        CoreCalls::$cacheCleaned++;
+    }
 };
 // endregion ////
 
@@ -97,16 +95,15 @@ use Bitrix\Main\Config\Option;
 const NEIGHBOUR = 'shef.leadfinish';
 
 /** Настройки двух модулей и чистый след вызовов перед каждой проверкой. */
-$given = static function(): shef_options
-{
-	CoreCalls::reset();
-	Option::$values = [];
+$given = static function (): shef_options {
+    CoreCalls::reset();
+    Option::$values = [];
 
-	Option::set('shef.options', 'DEF_systemuserid', '7');
-	Option::set('shef.options', 'DEF_other', 'Y');
-	Option::set(NEIGHBOUR, 'DEF_systemuserid', '9');
+    Option::set('shef.options', 'DEF_systemuserid', '7');
+    Option::set('shef.options', 'DEF_other', 'Y');
+    Option::set(NEIGHBOUR, 'DEF_systemuserid', '9');
 
-	return new shef_options();
+    return new shef_options();
 };
 
 Check::group('удаление уносит настройки модуля');

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * Подключение модуля даёт то, чем модуль предлагает пользоваться.
@@ -30,13 +32,13 @@ require_once $root.'/tests/assert.php';
  */
 class CJSCore
 {
-	/** @var array<string, array> */
-	public static array $registered = [];
+    /** @var array<string, array> */
+    public static array $registered = [];
 
-	public static function RegisterExt(string $name, array $params): void
-	{
-		static::$registered[$name] = $params;
-	}
+    public static function RegisterExt(string $name, array $params): void
+    {
+        static::$registered[$name] = $params;
+    }
 }
 
 // Configuration отдаёт значения настоящего .settings.php — ровно то, что
@@ -85,9 +87,9 @@ Check::group('register-js.php всё ещё отрабатывает');
 // include.php подключает три файла; проверяем, что добавленный не сломал
 // остальные — расширение зарегистрировано.
 Check::same(
-	'расширение shef-options-admin зарегистрировано',
-	isset(CJSCore::$registered['shef-options-admin']),
-	true
+    'расширение shef-options-admin зарегистрировано',
+    isset(CJSCore::$registered['shef-options-admin']),
+    true
 );
 
 Check::group('_log() пишет и дописывает');
@@ -106,16 +108,14 @@ $logFile = $sandbox.'/local/log/probe_'.date('dmY').'.log';
 // Уборка вешается на завершение процесса, а не пишется в конце группы: этот
 // тест существует ради падения, а падение до конца группы не доходит и
 // оставило бы каталог в /tmp следующему прогону с тем же pid.
-register_shutdown_function(static function() use ($sandbox, $documentRoot): void
-{
-	$_SERVER['DOCUMENT_ROOT'] = $documentRoot;
+register_shutdown_function(static function () use ($sandbox, $documentRoot): void {
+    $_SERVER['DOCUMENT_ROOT'] = $documentRoot;
 
-	array_map('unlink', glob($sandbox.'/local/log/*') ?: []);
+    array_map('unlink', glob($sandbox.'/local/log/*') ?: []);
 
-	foreach([$sandbox.'/local/log', $sandbox.'/local', $sandbox] as $dir)
-	{
-		is_dir($dir) && rmdir($dir);
-	}
+    foreach ([$sandbox.'/local/log', $sandbox.'/local', $sandbox] as $dir) {
+        is_dir($dir) && rmdir($dir);
+    }
 });
 
 array_map('unlink', glob($sandbox.'/local/log/*') ?: []);

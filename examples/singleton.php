@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * Наследование синглетона.
@@ -40,44 +42,42 @@ use Shef\Options\Options\Singleton;
  * Реестр обработанных сделок: считаем в пределах запроса, чтобы не
  * пересчитывать в каждом хендлере.
  */
-final class DealRegistry
-	extends Singleton
+final class DealRegistry extends Singleton
 {
-	/** @var int[] */
-	private array $ids = [];
+    /** @var int[] */
+    private array $ids = [];
 
-	/**
-	 * Конструктор остаётся protected — иначе смысл теряется: снаружи
-	 * появится второй способ создать объект.
-	 *
-	 * parent::__construct() обязателен. Сейчас базовый конструктор пуст, но
-	 * наследники в модуле вешают на него своё (см. TempFile\Manager —
-	 * регистрацию shutdown-функции), и забытый вызов ломает не наследника,
-	 * а базовый класс.
-	 */
-	protected function __construct()
-	{
-		parent::__construct();
-	}
+    /**
+     * Конструктор остаётся protected — иначе смысл теряется: снаружи
+     * появится второй способ создать объект.
+     *
+     * parent::__construct() обязателен. Сейчас базовый конструктор пуст, но
+     * наследники в модуле вешают на него своё (см. TempFile\Manager —
+     * регистрацию shutdown-функции), и забытый вызов ломает не наследника,
+     * а базовый класс.
+     */
+    protected function __construct()
+    {
+        parent::__construct();
+    }
 
-	public function add(int $id): static
-	{
-		$this->ids[$id] = $id;
-		return $this;
-	}
+    public function add(int $id): static
+    {
+        $this->ids[$id] = $id;
+        return $this;
+    }
 
-	/** @return int[] */
-	public function getIds(): array
-	{
-		return array_values($this->ids);
-	}
+    /** @return int[] */
+    public function getIds(): array
+    {
+        return array_values($this->ids);
+    }
 }
 
 /** Второй наследник — чтобы показать, что экземпляры не общие. */
-final class OrderRegistry
-	extends Singleton
+final class OrderRegistry extends Singleton
 {
-	public int $count = 0;
+    public int $count = 0;
 }
 // endregion ////
 
@@ -88,8 +88,11 @@ DealRegistry::getInstance()->add(20);
 DealRegistry::getInstance()->add(10);
 
 check('состояние накопилось в одном объекте', DealRegistry::getInstance()->getIds(), [10, 20]);
-check('это буквально тот же объект',
-	DealRegistry::getInstance() === DealRegistry::getInstance(), true);
+check(
+    'это буквально тот же объект',
+    DealRegistry::getInstance() === DealRegistry::getInstance(),
+    true
+);
 
 step('У каждого наследника свой экземпляр');
 
@@ -103,8 +106,11 @@ step('Тип возврата — static, а не Singleton');
 // getInstance(): static, поэтому переопределять его в наследнике не нужно:
 // и анализатор, и IDE видят здесь DealRegistry.
 check('класс экземпляра', get_class(DealRegistry::getInstance()), DealRegistry::class);
-check('экземпляр наследника — это Singleton',
-	DealRegistry::getInstance() instanceof Singleton, true);
+check(
+    'экземпляр наследника — это Singleton',
+    DealRegistry::getInstance() instanceof Singleton,
+    true
+);
 
 step('Обходные пути закрыты');
 
@@ -116,15 +122,12 @@ check('конструктор недоступен снаружи', $constructor
 $clone = (new ReflectionClass(DealRegistry::class))->getMethod('__clone');
 check('клонирование недоступно снаружи', $clone->isPublic(), false);
 
-try
-{
-	// Десериализация обошла бы getInstance() и дала второй экземпляр.
-	unserialize(serialize(DealRegistry::getInstance()));
-	check('десериализация запрещена', false, true);
-}
-catch(Throwable $throwable)
-{
-	check('десериализация бросает исключение', $throwable::class, Exception::class);
+try {
+    // Десериализация обошла бы getInstance() и дала второй экземпляр.
+    unserialize(serialize(DealRegistry::getInstance()));
+    check('десериализация запрещена', false, true);
+} catch (Throwable $throwable) {
+    check('десериализация бросает исключение', $throwable::class, Exception::class);
 }
 
 step('Чего синглетон НЕ делает');

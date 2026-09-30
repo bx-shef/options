@@ -1,8 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Shef\Options\Tests;
 
 interface ITest
 {
-	public function check(): \Bitrix\Main\Result;
+    public function check(): \Bitrix\Main\Result;
 }

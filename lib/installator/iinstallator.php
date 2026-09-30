@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Shef\Options\Installator;
 
@@ -10,9 +12,9 @@ use Bitrix\Main\Type\Dictionary;
  */
 interface IInstallator
 {
-	/**
-	 * @param Dictionary[] $list
-	 * @return Result
-	 */
-	public function build(Dictionary $list): Result;
+    /**
+     * @param Dictionary[] $list
+     * @return Result
+     */
+    public function build(Dictionary $list): Result;
 }

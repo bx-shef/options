@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Shef\Options\Installator\Strategy;
 
@@ -10,5 +12,5 @@ use Shef\Options\Installator\IEntity;
  */
 interface IStrategy
 {
-	public function process(IEntity $entity): Result;
+    public function process(IEntity $entity): Result;
 }

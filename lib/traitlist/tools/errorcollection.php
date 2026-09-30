@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Shef\Options\TraitList\Tools;
 
@@ -21,7 +23,7 @@ trait ErrorCollection
      */
     protected function initErrorCollection(): void
     {
-        $this->errorCollection = new Main\ErrorCollection;
+        $this->errorCollection = new Main\ErrorCollection();
     }
 
     /**
@@ -30,8 +32,7 @@ trait ErrorCollection
      */
     protected function getErrorCollection(): Main\ErrorCollection
     {
-        if(!($this->errorCollection instanceof Main\ErrorCollection))
-        {
+        if (!($this->errorCollection instanceof Main\ErrorCollection)) {
             throw new \Bitrix\Main\ArgumentNullException('errorCollection');
         }
 
@@ -93,14 +94,10 @@ trait ErrorCollection
      */
     protected function printErrors(string $option = 'errortext'): void
     {
-        foreach ($this->getErrors() as $error)
-        {
-            if(!function_exists('_showError'))
-            {
+        foreach ($this->getErrors() as $error) {
+            if (!function_exists('_showError')) {
                 ShowError($error, $option);
-            }
-            else
-            {
+            } else {
                 _showError($error, $option);
             }
         }
@@ -115,13 +112,11 @@ trait ErrorCollection
     protected function throwErrors(): void
     {
         $messages = [];
-        foreach($this->getErrors() as $error)
-        {
+        foreach ($this->getErrors() as $error) {
             $messages[] = $error->getMessage();
         }
 
-        if(!empty($messages))
-        {
+        if (!empty($messages)) {
             throw new \Exception(implode(', ', $messages));
         }
 

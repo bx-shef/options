@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * Реестр настроек с временной подменой.
@@ -42,14 +44,14 @@ step('Значения кладут один раз, берут откуда у�
 // Config — синглетон, поэтому «положил здесь, взял там» работает без
 // передачи объекта по цепочке вызовов.
 Config::getInstance()
-	->setValue('mode', 'import')
-	->setValue('source', 'crm')
+    ->setValue('mode', 'import')
+    ->setValue('source', 'crm')
 ;
 
 check('значение на месте', Config::getInstance()->getValue('mode'), 'import');
 check('это тот же реестр', Config::getInstance()->toArray(), [
-	'mode' => 'import',
-	'source' => 'crm',
+    'mode' => 'import',
+    'source' => 'crm',
 ]);
 
 step('Ключа нет — это не падение');

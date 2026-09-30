@@ -1,4 +1,5 @@
 <?php
+
 $MESS['shef.options_TAB_DEF_NAME'] = 'Общие';
 $MESS['shef.options_TAB_DEF_TITLE'] = 'Общие настройки';
 $MESS['shef.options_TAB_DEF_systemuserid'] = 'Служебный пользователь';

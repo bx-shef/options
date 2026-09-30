@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Shef\Options\Installator\UF;
@@ -16,142 +17,127 @@ use Shef\Options\Installator;
  * Установщик UF
  *
  */
-class Manager
-	implements Installator\IInstallator
+class Manager implements Installator\IInstallator
 {
-	/**
-	 * По списку добавляет UF
-	 *
-	 * Если поле уже существует, пропустит его
-	 *
-	 * @param Dictionary[] $list
-	 * @return Result
-	 */
-	public static function build(Dictionary $list): Result
-	{
-		/** @var Type\AUF $field */
+    /**
+     * По списку добавляет UF
+     *
+     * Если поле уже существует, пропустит его
+     *
+     * @param Dictionary[] $list
+     * @return Result
+     */
+    public static function build(Dictionary $list): Result
+    {
+        /** @var Type\AUF $field */
 
-		$result = new Result();
-		foreach($list as $field)
-		{
-			$response = static::process($field);
-			if(!$response->isSuccess())
-			{
-				$result->addErrors($response->getErrors());
-			}
-		}
+        $result = new Result();
+        foreach ($list as $field) {
+            $response = static::process($field);
+            if (!$response->isSuccess()) {
+                $result->addErrors($response->getErrors());
+            }
+        }
 
-		return $result;
-	}
+        return $result;
+    }
 
-	/**
-	 * Обрабатывает UF
-	 * @param Type\AUF $field
-	 * @return Result
-	 */
-	private static function process(Type\AUF $field): Result
-	{
-		$result = new Result();
+    /**
+     * Обрабатывает UF
+     * @param Type\AUF $field
+     * @return Result
+     */
+    private static function process(Type\AUF $field): Result
+    {
+        $result = new Result();
 
-		if($field->getId() > 0)
-		{
-			return $result;
-		}
+        if ($field->getId() > 0) {
+            return $result;
+        }
 
-		$response = static::add($field);
-		if(!$response->isSuccess())
-		{
-			return $result->addErrors($response->getErrors());
-		}
+        $response = static::add($field);
+        if (!$response->isSuccess()) {
+            return $result->addErrors($response->getErrors());
+        }
 
-		if($field instanceof Type\AUFEnum)
-		{
-			$response = static::setEnum($field);
-			if(!$response->isSuccess())
-			{
-				return $result->addErrors($response->getErrors());
-			}
-		}
+        if ($field instanceof Type\AUFEnum) {
+            $response = static::setEnum($field);
+            if (!$response->isSuccess()) {
+                return $result->addErrors($response->getErrors());
+            }
+        }
 
-		return $result->setData($response->getData());
-	}
+        return $result->setData($response->getData());
+    }
 
-	/**
-	 * Добавляет UF
-	 * @param Type\AUF $field
-	 * @return Result
-	 */
-	private static function add(Type\AUF $field): Result
-	{
-		$result = new Result();
+    /**
+     * Добавляет UF
+     * @param Type\AUF $field
+     * @return Result
+     */
+    private static function add(Type\AUF $field): Result
+    {
+        $result = new Result();
 
-		$entity = new \CUserTypeEntity();
+        $entity = new \CUserTypeEntity();
 
-		$elementId = $entity->add($field->getInstallSettings());
-		if(false === $elementId)
-		{
-			$error = 'error add field';
-			$strEx = Utils::getCMainApplication()->getException();
-			if($strEx instanceof \CApplicationException)
-			{
-				$error = $strEx->getString();
-			}
+        $elementId = $entity->add($field->getInstallSettings());
+        if (false === $elementId) {
+            $error = 'error add field';
+            $strEx = Utils::getCMainApplication()->getException();
+            if ($strEx instanceof \CApplicationException) {
+                $error = $strEx->getString();
+            }
 
-			return $result->addError(new Error('Error at UF '.$field->getName().': '.$error));
-		}
+            return $result->addError(new Error('Error at UF '.$field->getName().': '.$error));
+        }
 
-		$field->setId((int)$elementId);
+        $field->setId((int)$elementId);
 
-		return $result;
-	}
+        return $result;
+    }
 
-	/**
-	 * Добавляет элементы enum
-	 * @see: https://dev.1c-bitrix.ru/api_help/main/reference/cuserfieldenum/setenumvalues.php
-	 *
-	 * @param Type\AUF $field
-	 * @return Result
-	 */
-	private static function setEnum(Type\AUFEnum $field): Result
-	{
-		$result = new Result();
+    /**
+     * Добавляет элементы enum
+     * @see: https://dev.1c-bitrix.ru/api_help/main/reference/cuserfieldenum/setenumvalues.php
+     *
+     * @param Type\AUF $field
+     * @return Result
+     */
+    private static function setEnum(Type\AUFEnum $field): Result
+    {
+        $result = new Result();
 
-		$conf = [];
-		$index = 0;
+        $conf = [];
+        $index = 0;
 
-		/** @var Type\AEnumItem $enum */
-		foreach($field->getEnums()->toArray() as $enum)
-		{
-			$keyEnum = null;
-			if($enum->getId() > 0)
-			{
-				$keyEnum = $enum->getId();
-			}
-			else
-			{
-				$keyEnum = 'n'.$index;
-				$index++;
-			}
+        /** @var Type\AEnumItem $enum */
+        foreach ($field->getEnums()->toArray() as $enum) {
+            $keyEnum = null;
+            if ($enum->getId() > 0) {
+                $keyEnum = $enum->getId();
+            } else {
+                $keyEnum = 'n'.$index;
+                $index++;
+            }
 
-			$conf[$keyEnum] = $enum->getInstallSettings();
-		}
+            $conf[$keyEnum] = $enum->getInstallSettings();
+        }
 
-		$obEnum = new \CUserFieldEnum;
-		$response = $obEnum->SetEnumValues($field->getId(), $conf);
-		if($response === false)
-		{
-			$error = 'error add enum field';
-			$strEx = Utils::getCMainApplication()->getException();
-			if($strEx instanceof \CApplicationException)
-			{
-				$error = $strEx->getString();
-			}
+        $obEnum = new \CUserFieldEnum();
+        $response = $obEnum->SetEnumValues($field->getId(), $conf);
+        if ($response === false) {
+            $error = 'error add enum field';
+            $strEx = Utils::getCMainApplication()->getException();
+            if ($strEx instanceof \CApplicationException) {
+                $error = $strEx->getString();
+            }
 
-			return $result->addError(new Error('Error at UF '.$field->getName().': '.$error));
-		}
+            return $result->addError(new Error('Error at UF '.$field->getName().': '.$error));
+        }
 
-		$field->reInitEnums();
+        $field->reInitEnums();
 
-		return $result;
-	}
+        return $result;
+    }
 }

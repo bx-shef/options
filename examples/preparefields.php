@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * Приведение входных полей трейтом PrepareFields.
@@ -49,41 +51,42 @@ use Shef\Options\TraitList\Tools\PrepareFields;
  */
 final class PriceRow
 {
-	use PrepareFields;
+    use PrepareFields;
 
-	public function __construct(
-		public readonly string $name,
-		public readonly int $quantity,
-		public readonly float $price,
-		public readonly array $tags
-	) {}
+    public function __construct(
+        public readonly string $name,
+        public readonly int $quantity,
+        public readonly float $price,
+        public readonly array $tags
+    ) {
+    }
 
-	/**
-	 * Собирает строку из сырого массива.
-	 *
-	 * @throws ArgumentNullException если нет обязательного поля
-	 */
-	public static function fromArray(array $row): static
-	{
-		return new static(
-			// Обязательное: нет значения — исключение с понятным текстом.
-			name: static::checkFieldString('Наименование', $row['NAME'] ?? null, true),
-			// Необязательные: нет значения — умолчание.
-			quantity: static::checkFieldInt('Количество', $row['QUANTITY'] ?? null, false, 1),
-			price: static::checkFieldFloat('Цена', $row['PRICE'] ?? null, false, 0.0),
-			tags: static::checkFieldArray('Метки', $row['TAGS'] ?? null, false, []),
-		);
-	}
+    /**
+     * Собирает строку из сырого массива.
+     *
+     * @throws ArgumentNullException если нет обязательного поля
+     */
+    public static function fromArray(array $row): static
+    {
+        return new static(
+            // Обязательное: нет значения — исключение с понятным текстом.
+            name: static::checkFieldString('Наименование', $row['NAME'] ?? null, true),
+            // Необязательные: нет значения — умолчание.
+            quantity: static::checkFieldInt('Количество', $row['QUANTITY'] ?? null, false, 1),
+            price: static::checkFieldFloat('Цена', $row['PRICE'] ?? null, false, 0.0),
+            tags: static::checkFieldArray('Метки', $row['TAGS'] ?? null, false, []),
+        );
+    }
 }
 // endregion ////
 
 step('Разбор строки как есть');
 
 $row = PriceRow::fromArray([
-	'NAME' => '  Болт М8  ',
-	'QUANTITY' => '1 200',
-	'PRICE' => '1 234,50',
-	'TAGS' => ['крепёж'],
+    'NAME' => '  Болт М8  ',
+    'QUANTITY' => '1 200',
+    'PRICE' => '1 234,50',
+    'TAGS' => ['крепёж'],
 ]);
 
 check('строка очищена', $row->name, 'Болт М8');
@@ -95,8 +98,11 @@ check('массив остался массивом', $row->tags, ['крепёж
 
 step('Неразрывный пробел — тот самый, что приходит из 1С и Excel');
 
-check('разбирается наравне с обычным',
-	PriceRow::parseInt('1'.chr(194).chr(160).'200'), 1200);
+check(
+    'разбирается наравне с обычным',
+    PriceRow::parseInt('1'.chr(194).chr(160).'200'),
+    1200
+);
 
 step('Чего НЕ делает приведение типом');
 
@@ -119,14 +125,11 @@ check('умолчание вместо количества', $row->quantity, 1)
 check('умолчание вместо цены', $row->price, 0.0);
 check('умолчание вместо меток', $row->tags, []);
 
-try
-{
-	PriceRow::fromArray(['QUANTITY' => 5]);
-	check('без наименования должно падать', false, true);
-}
-catch(ArgumentNullException $exception)
-{
-	check('исключение с именем поля', str_contains($exception->getMessage(), 'Наименование'), true);
+try {
+    PriceRow::fromArray(['QUANTITY' => 5]);
+    check('без наименования должно падать', false, true);
+} catch (ArgumentNullException $exception) {
+    check('исключение с именем поля', str_contains($exception->getMessage(), 'Наименование'), true);
 }
 
 step('Негодный тип — это не то же, что отсутствие');
@@ -141,7 +144,7 @@ step('prepareRowList: на выходе всегда массив');
 // отсутствует. Дальше по коду хочется просто foreach.
 final class Importer
 {
-	use PrepareFields { prepareRowList as public; }
+    use PrepareFields { prepareRowList as public; }
 }
 
 $importer = new Importer();

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * Skills: агент читает их вместо того, чтобы разбираться в модуле заново.
@@ -32,26 +34,22 @@ Check::same('skills нашлись', count($skills) > 0, true);
  *
  * @return array<string, string>
  */
-$frontmatter = static function(string $text): array
-{
-	if(!preg_match('/\A---\R(.*?)\R---\R/su', $text, $matches))
-	{
-		return [];
-	}
+$frontmatter = static function (string $text): array {
+    if (!preg_match('/\A---\R(.*?)\R---\R/su', $text, $matches)) {
+        return [];
+    }
 
-	$fields = [];
+    $fields = [];
 
-	foreach(preg_split('/\R/u', $matches[1]) ?: [] as $line)
-	{
-		if(!preg_match('/^([a-z_]+):\s*(.+)$/u', $line, $pair))
-		{
-			continue;
-		}
+    foreach (preg_split('/\R/u', $matches[1]) ?: [] as $line) {
+        if (!preg_match('/^([a-z_]+):\s*(.+)$/u', $line, $pair)) {
+            continue;
+        }
 
-		$fields[$pair[1]] = trim($pair[2]);
-	}
+        $fields[$pair[1]] = trim($pair[2]);
+    }
 
-	return $fields;
+    return $fields;
 };
 
 Check::group('оформление');
@@ -59,58 +57,43 @@ Check::group('оформление');
 $broken = [];
 $names = [];
 
-foreach($skills as $path)
-{
-	$directory = basename(dirname($path));
-	$text = file_get_contents($path);
-	$fields = $frontmatter($text);
+foreach ($skills as $path) {
+    $directory = basename(dirname($path));
+    $text = file_get_contents($path);
+    $fields = $frontmatter($text);
 
-	if(empty($fields))
-	{
-		$broken[] = $directory.': нет frontmatter';
-		continue;
-	}
+    if (empty($fields)) {
+        $broken[] = $directory.': нет frontmatter';
+        continue;
+    }
 
-	$name = $fields['name'] ?? '';
-	$description = $fields['description'] ?? '';
+    $name = $fields['name'] ?? '';
+    $description = $fields['description'] ?? '';
 
-	if($name === '')
-	{
-		$broken[] = $directory.': нет поля name';
-	}
-	elseif($name !== $directory)
-	{
-		$broken[] = sprintf('%s: name = «%s», а каталог другой', $directory, $name);
-	}
-	elseif(1 !== preg_match('/^[a-z0-9-]+$/', $name))
-	{
-		$broken[] = sprintf('%s: name не из [a-z0-9-]', $directory);
-	}
-	else
-	{
-		$names[] = $name;
-	}
+    if ($name === '') {
+        $broken[] = $directory.': нет поля name';
+    } elseif ($name !== $directory) {
+        $broken[] = sprintf('%s: name = «%s», а каталог другой', $directory, $name);
+    } elseif (1 !== preg_match('/^[a-z0-9-]+$/', $name)) {
+        $broken[] = sprintf('%s: name не из [a-z0-9-]', $directory);
+    } else {
+        $names[] = $name;
+    }
 
-	// Описание — единственное, по чему skill находят. Одной строкой:
-	// перенос обрывает разбор frontmatter на полуслове.
-	if($description === '')
-	{
-		$broken[] = $directory.': нет поля description';
-	}
-	elseif(mb_strlen($description) < 80)
-	{
-		$broken[] = sprintf('%s: описание короче 80 символов — по нему не выбрать', $directory);
-	}
-	elseif(mb_strlen($description) > 1024)
-	{
-		$broken[] = sprintf('%s: описание длиннее 1024 символов', $directory);
-	}
+    // Описание — единственное, по чему skill находят. Одной строкой:
+    // перенос обрывает разбор frontmatter на полуслове.
+    if ($description === '') {
+        $broken[] = $directory.': нет поля description';
+    } elseif (mb_strlen($description) < 80) {
+        $broken[] = sprintf('%s: описание короче 80 символов — по нему не выбрать', $directory);
+    } elseif (mb_strlen($description) > 1024) {
+        $broken[] = sprintf('%s: описание длиннее 1024 символов', $directory);
+    }
 
-	// Заголовок нужен человеку, открывшему файл.
-	if(!preg_match('/^#\s+\S/mu', $text))
-	{
-		$broken[] = $directory.': нет заголовка';
-	}
+    // Заголовок нужен человеку, открывшему файл.
+    if (!preg_match('/^#\s+\S/mu', $text)) {
+        $broken[] = $directory.': нет заголовка';
+    }
 }
 
 Check::same('frontmatter, имя и описание на месте', $broken, []);
@@ -135,9 +118,8 @@ $output = [];
 $code = 0;
 exec(escapeshellarg($sync).' --check 2>&1', $output, $code);
 
-if(0 !== $code)
-{
-	echo implode(PHP_EOL, $output), PHP_EOL;
+if (0 !== $code) {
+    echo implode(PHP_EOL, $output), PHP_EOL;
 }
 
 Check::same('манифест сходится с навыками', $code, 0);
@@ -145,28 +127,24 @@ Check::same('манифест сходится с навыками', $code, 0);
 // Каждый навык обязан быть в манифесте: иначе получатель его не проверит.
 $listed = [];
 
-foreach(file($root.'/.claude/skills/MANIFEST') ?: [] as $line)
-{
-	$line = trim($line);
+foreach (file($root.'/.claude/skills/MANIFEST') ?: [] as $line) {
+    $line = trim($line);
 
-	if('' === $line || str_starts_with($line, '#'))
-	{
-		continue;
-	}
+    if ('' === $line || str_starts_with($line, '#')) {
+        continue;
+    }
 
-	$listed[] = preg_split('/\s+/', $line, 2)[1] ?? '';
+    $listed[] = preg_split('/\s+/', $line, 2)[1] ?? '';
 }
 
 $missing = [];
 
-foreach($skills as $path)
-{
-	$relative = basename(dirname($path)).'/SKILL.md';
+foreach ($skills as $path) {
+    $relative = basename(dirname($path)).'/SKILL.md';
 
-	if(!in_array($relative, $listed, true))
-	{
-		$missing[] = $relative;
-	}
+    if (!in_array($relative, $listed, true)) {
+        $missing[] = $relative;
+    }
 }
 
 Check::same('каждый навык перечислен в манифесте', $missing, []);

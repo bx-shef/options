@@ -1,4 +1,5 @@
 <?php
+
 $MESS['shef.options_MODULE_NAME'] = '[SH] Настройки';
 $MESS['shef.options_MODULE_DESC'] = 'Для хранения настроек, паттернов, трейтов, абстракций и интерфейсов.';
 $MESS['shef.options_PARTNER_NAME'] = 'ИП Шевчик И.С.';

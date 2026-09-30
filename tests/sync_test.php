@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * Раскладка навыков: локальные навыки получателя переживают sync.sh --to.
@@ -33,34 +35,29 @@ $targetSync = $target.'/.claude/skills/sync.sh';
 $local = $target.'/.claude/skills/acme-local/SKILL.md';
 
 /** Код возврата команды; вывод печатается при провале — чтобы было что читать. */
-$run = static function(string $command) : int
-{
-	$output = [];
-	$code = 0;
-	exec($command.' 2>&1', $output, $code);
+$run = static function (string $command): int {
+    $output = [];
+    $code = 0;
+    exec($command.' 2>&1', $output, $code);
 
-	return $code;
+    return $code;
 };
 
-$remove = static function(string $dir) use (&$remove): void
-{
-	if(!is_dir($dir))
-	{
-		return;
-	}
+$remove = static function (string $dir) use (&$remove): void {
+    if (!is_dir($dir)) {
+        return;
+    }
 
-	foreach(scandir($dir) ?: [] as $entry)
-	{
-		if('.' === $entry || '..' === $entry)
-		{
-			continue;
-		}
+    foreach (scandir($dir) ?: [] as $entry) {
+        if ('.' === $entry || '..' === $entry) {
+            continue;
+        }
 
-		$path = $dir.'/'.$entry;
-		is_dir($path) && !is_link($path) ? $remove($path) : unlink($path);
-	}
+        $path = $dir.'/'.$entry;
+        is_dir($path) && !is_link($path) ? $remove($path) : unlink($path);
+    }
 
-	rmdir($dir);
+    rmdir($dir);
 };
 
 mkdir($target, 0777, true);
@@ -103,9 +100,9 @@ $old = $target.'/.claude/skills/shef-removed/SKILL.md';
 mkdir(dirname($old), 0777, true);
 file_put_contents($old, 'старый навык');
 file_put_contents(
-	$target.'/.claude/skills/MANIFEST',
-	hash_file('sha256', $old).'  shef-removed/SKILL.md'.PHP_EOL,
-	FILE_APPEND
+    $target.'/.claude/skills/MANIFEST',
+    hash_file('sha256', $old).'  shef-removed/SKILL.md'.PHP_EOL,
+    FILE_APPEND
 );
 
 Check::same('--to отработал', $run(escapeshellarg($sync).' --to '.escapeshellarg($target)), 0);
@@ -115,9 +112,9 @@ Check::same('локальный — на месте', is_file($local), true);
 Check::group('совпадение с навыком линейки');
 
 file_put_contents(
-	$target.'/.claude/skills/LOCAL.MANIFEST',
-	"0000  shef-feedback/SKILL.md\n",
-	FILE_APPEND
+    $target.'/.claude/skills/LOCAL.MANIFEST',
+    "0000  shef-feedback/SKILL.md\n",
+    FILE_APPEND
 );
 Check::same('--to отказывается', $run(escapeshellarg($sync).' --to '.escapeshellarg($target)) !== 0, true);
 

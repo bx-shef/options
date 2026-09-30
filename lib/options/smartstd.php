@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Shef\Options\Options;
 
@@ -11,9 +13,7 @@ use Bitrix\Main\Type\Contract;
  * Умеет красиво в Array конвертироваться
  *
  */
-class SmartStd
-    extends \stdClass
-    implements Contract\Arrayable, \Stringable
+class SmartStd extends \stdClass implements Contract\Arrayable, \Stringable
 {
     /**
      * Преобразуетс в массив
@@ -35,8 +35,7 @@ class SmartStd
         // довод, что и у отказа ставиться на портал в CP1251.
         $json = json_encode(static::toArrayInner($this));
 
-        if(!is_string($json))
-        {
+        if (!is_string($json)) {
             throw new ArgumentException(sprintf(
                 'SmartStd: значение не переводится в json (%s)',
                 json_last_error_msg()
@@ -45,8 +44,7 @@ class SmartStd
 
         $value = json_decode($json, true);
 
-        if(!is_array($value))
-        {
+        if (!is_array($value)) {
             return [];
         }
 
@@ -64,12 +62,9 @@ class SmartStd
      */
     public function __toString(): string
     {
-        try
-        {
+        try {
             $array = $this->toArray();
-        }
-        catch(ArgumentException $exception)
-        {
+        } catch (ArgumentException $exception) {
             // __toString() зовут неявно: из строки лога, из сообщения
             // исключения, из конкатенации. Бросить оттуда значит уронить то
             // место, которое как раз пыталось записать сбой, — и вместо
@@ -94,10 +89,8 @@ class SmartStd
 
     public function __clone()
     {
-        foreach(get_object_vars($this) as $name => $value)
-        {
-            if(is_object($value))
-            {
+        foreach (get_object_vars($this) as $name => $value) {
+            if (is_object($value)) {
                 $this->{$name} = clone $value;
             }
         }
@@ -115,38 +108,27 @@ class SmartStd
     public static function toObject(
         array $values,
         int $level = 0
-    ): array|self
-    {
+    ): array|self {
         $isObj = true;
 
-        if($level === 0)
-        {
+        if ($level === 0) {
             $object = new static();
-        }
-        elseif(array_is_list($values))
-        {
+        } elseif (array_is_list($values)) {
             $object = [];
             $isObj = false;
-        }
-        else
-        {
+        } else {
             $object = new static();
         }
 
         // stdClass object
-        foreach($values as $key => $value)
-        {
-            if(is_array($value))
-            {
+        foreach ($values as $key => $value) {
+            if (is_array($value)) {
                 $value = static::toObject($value, ++$level);
             }
 
-            if(!$isObj)
-            {
+            if (!$isObj) {
                 $object[$key] = $value;
-            }
-            else
-            {
+            } else {
                 $object->$key = $value;
             }
 
@@ -164,33 +146,22 @@ class SmartStd
     protected static function toArrayInner(
         object|array $values,
         int $level = 0
-    ): array
-    {
+    ): array {
         $object = [];
 
-        foreach($values as $key => $value)
-        {
-            if($value instanceof \Bitrix\Main\Type\Date)
-            {
+        foreach ($values as $key => $value) {
+            if ($value instanceof \Bitrix\Main\Type\Date) {
                 $value = $value->toString();
-            }
-            elseif($value instanceof \Bitrix\Main\Type\Contract\Arrayable)
-            {
+            } elseif ($value instanceof \Bitrix\Main\Type\Contract\Arrayable) {
                 $value = $value->toArray();
-            }
-            elseif($value instanceof \Bitrix\Main\Type\Contract\Jsonable)
-            {
+            } elseif ($value instanceof \Bitrix\Main\Type\Contract\Jsonable) {
                 $value = $value->toJson();
-            }
-            elseif($value instanceof \JsonSerializable)
-            {
+            } elseif ($value instanceof \JsonSerializable) {
                 $value = $value->jsonSerialize();
-            }
-            elseif(
+            } elseif (
                 is_object($value)
                 || is_array($value)
-            )
-            {
+            ) {
                 $value = static::toArrayInner($value, ++$level);
             }
 
