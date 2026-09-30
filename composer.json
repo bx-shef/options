@@ -28,6 +28,11 @@
 		"ext-mbstring": "*",
 		"composer/installers": "^1.0 || ^2.0"
 	},
+	"config": {
+		"allow-plugins": {
+			"composer/installers": true
+		}
+	},
 	"require-dev": {
 		"friendsofphp/php-cs-fixer": "3.95.27"
 	},

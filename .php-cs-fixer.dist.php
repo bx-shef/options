@@ -24,11 +24,15 @@ declare(strict_types=1);
 
 $finder = PhpCsFixer\Finder::create()
     ->in(__DIR__)
-    ->exclude(['vendor'])
-    // Точечные файлы Symfony Finder пропускает по умолчанию, а этот файл —
-    // такой же исходник, как остальные, и правила обязан соблюдать сам.
+    // Точечные файлы Symfony Finder пропускает по умолчанию, а .settings.php
+    // и сам этот файл — такие же исходники, и правила обязаны соблюдать.
     ->ignoreDotFiles(false)
-    ->notName('.php-cs-fixer.cache');
+    // Вместе с точечными открылись бы и каталоги из .gitignore: /.versions и
+    // /bitrix-version-builder держат копии php-файлов модуля, и у того, кто
+    // хоть раз собирал версии, composer run lint краснел бы на файлах,
+    // которых в репозитории нет, — при зелёном CI на свежем клоне. Каталог
+    // vendor/ базовый Finder исключает сам, как и маску имени *.php.
+    ->ignoreVCSIgnored(true);
 
 return (new PhpCsFixer\Config())
     ->setRules([

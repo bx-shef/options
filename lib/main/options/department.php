@@ -181,9 +181,9 @@ class Department extends AOption
                         onAfterTagAdd: function(event)
                         {
                             const { tag } = event.getData();
-                            
+
                             data = data.filter(function(e) { return e.id !== tag.getId(); }.bind(this));
-                            
+
                             data.push({
                                 id: tag.getId(),
                                 title: tag.getTitle(),
@@ -192,21 +192,21 @@ class Department extends AOption
                                 link: '' ,
                                 avatar: tag.getAvatar(),
                             });
-                            
+
                             nodeInput.value = JSON.stringify(data);
                         }.bind(this),
                         onBeforeTagRemove: function(event)
                         {
                             const { tag } = event.getData();
-                            
+
                             data = data.filter(function(e) { return e.id !== tag.getId(); }.bind(this));
-                            
+
                             nodeInput.value = JSON.stringify(data);
                         }.bind(this),
                     }
                 });
                 tagSelector.renderTo(document.getElementById('<?=$confJs['containerId']?>'));
-                
+
                 try
                 {
                     data = JSON.parse(nodeInput.value);
@@ -215,7 +215,7 @@ class Department extends AOption
                 {
                     data = [];
                 }
-                
+
                 data.forEach(function(currentValue){
                     tagSelector.addTag(currentValue);
                 }.bind(this));

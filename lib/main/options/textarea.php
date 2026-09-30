@@ -40,11 +40,11 @@ class TextArea extends AOption
     {
         return sprintf(
             '<textarea
-                rows="%s"
-                cols="%s"
-                name="%s"
-                id="%s"
-            >%s</textarea>',
+				rows="%s"
+				cols="%s"
+				name="%s"
+				id="%s"
+			>%s</textarea>',
             $this->getRows(),
             $this->getCols(),
             $this->getInputName(),

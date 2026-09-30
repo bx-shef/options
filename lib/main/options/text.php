@@ -29,12 +29,12 @@ class Text extends AOption
     {
         return sprintf(
             '<input
-                type="text"
-                size="%s"
-                name="%s"
-                id="%s"
-                value="%s"
-            >',
+				type="text"
+				size="%s"
+				name="%s"
+				id="%s"
+				value="%s"
+			>',
             $this->getSize(),
             $this->getInputName(),
             $this->getInputId(),

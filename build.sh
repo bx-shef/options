@@ -58,6 +58,7 @@ KEEP=(
 	'CLAUDE.md'
 	'CONTRIBUTING.md'
 	'build.sh'
+	'composer.lock'
 	'docs/'
 	'examples/'
 	'tests/'

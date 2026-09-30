@@ -47,7 +47,7 @@ abstract class AControllerable extends AComponent implements IClass, IAutoloader
      *
      * <code>
      * return [
-     * 	'demo' => $this->getConfigureActionsDefFilter()
+     *     'demo' => $this->getConfigureActionsDefFilter()
      * ];
      * </code>
      */

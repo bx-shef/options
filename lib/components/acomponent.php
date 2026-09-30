@@ -43,8 +43,8 @@ abstract class AComponent extends \CBitrixComponent implements IClass, IAutoload
      * <code>
      * if((int)$this->arParams['DEMO'] < 1)
      * {
-     * 	$this->addError(new Error('test Error'));
-     * 	return;
+     *     $this->addError(new Error('test Error'));
+     *     return;
      * }
      * </code>
      */

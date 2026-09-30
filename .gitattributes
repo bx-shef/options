@@ -15,4 +15,5 @@
 /docs/			export-ignore
 /examples/		export-ignore
 /build.sh		export-ignore
+/composer.lock		export-ignore
 /tests/			export-ignore

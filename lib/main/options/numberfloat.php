@@ -53,15 +53,15 @@ class NumberFloat extends Text
     {
         return sprintf(
             '<input
-                type="number"
-                min="%s"
-                max="%s"
-                step="%s"
-                size="%s"
-                name="%s"
-                id="%s"
-                value="%s"
-            >',
+				type="number"
+				min="%s"
+				max="%s"
+				step="%s"
+				size="%s"
+				name="%s"
+				id="%s"
+				value="%s"
+			>',
             $this->getMin(),
             $this->getMax(),
             $this->getStep(),

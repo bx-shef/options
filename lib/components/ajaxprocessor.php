@@ -43,7 +43,7 @@ abstract class AjaxProcessor extends Controller
      *
      * <code>
      * return [
-     * 	'demo' => $this->getConfigureActionsDefFilter()
+     *     'demo' => $this->getConfigureActionsDefFilter()
      * ];
      * </code>
      */

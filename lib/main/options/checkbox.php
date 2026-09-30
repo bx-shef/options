@@ -32,17 +32,17 @@ class Checkbox extends AOption
     {
         return sprintf(
             '<input
-                type="hidden"
-                name="%s"
-                value="%s"
-            >
-            <input
-                type="checkbox"
-                name="%s"
-                id="%s"
-                value="%s"
-                %s
-            >',
+				type="hidden"
+				name="%s"
+				value="%s"
+			>
+			<input
+				type="checkbox"
+				name="%s"
+				id="%s"
+				value="%s"
+				%s
+			>',
             $this->getInputName(),
             $this->getValueN(),
             $this->getInputName(),
