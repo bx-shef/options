@@ -2,6 +2,7 @@
 
 namespace Shef\Options\Options;
 
+use Bitrix\Main\ArgumentException;
 use Bitrix\Main\Type\Contract;
 
 /**
@@ -17,10 +18,32 @@ class SmartStd
     /**
      * Преобразуетс в массив
      * @return array
+     * @throws ArgumentException значение не переводится в json
      */
     public function toArray(): array
     {
-        $value = json_decode(json_encode(static::toArrayInner($this)), true);
+        // json_encode() возвращает false, если данные ему не по зубам: строка
+        // не в UTF-8, INF, NAN. Дальше json_decode(false) под strict_types —
+        // это TypeError про аргумент json_decode(), по которому не понять
+        // ничего. Поэтому отказ ловится здесь и называет причину.
+        //
+        // Подменять испорченные символы (JSON_INVALID_UTF8_SUBSTITUTE) нельзя,
+        // хотя падать после этого было бы нечему: два разных ключа в cp1251
+        // дают одну и ту же строку из U+FFFD, схлопываются в один, и значение
+        // пропадает молча. Проверено: на входе три элемента, на выходе два.
+        // Молча отдать правдоподобный мусор хуже, чем отказаться, — тот же
+        // довод, что и у отказа ставиться на портал в CP1251.
+        $json = json_encode(static::toArrayInner($this));
+
+        if(!is_string($json))
+        {
+            throw new ArgumentException(sprintf(
+                'SmartStd: значение не переводится в json (%s)',
+                json_last_error_msg()
+            ));
+        }
+
+        $value = json_decode($json, true);
 
         if(!is_array($value))
         {

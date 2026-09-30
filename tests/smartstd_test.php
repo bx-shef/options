@@ -117,4 +117,46 @@ Check::same('оригинал не тронут', $original->props->color, 'кр
 Check::same('копия изменилась', $copy->props->color, 'синий');
 Check::same('это разные объекты', $original->props === $copy->props, false);
 
+Check::group('значение, не переводимое в json');
+
+// json_encode() возвращает false на строке не в UTF-8 и на INF/NAN, а
+// json_decode(false) под strict_types — это TypeError про аргумент
+// json_decode(), по которому не понять ничего. Теперь отказ называет причину.
+//
+// Подменять испорченные символы нельзя: два разных ключа в cp1251 дают одну и
+// ту же строку из U+FFFD и схлопываются в один — объект молча теряет
+// значение. Проверка ниже держит именно отказ, а не подмену.
+Check::throws(
+    'строка не в UTF-8',
+    \Bitrix\Main\ArgumentException::class,
+    static fn() => SmartStd::toObject(['name' => "\xC0\xE1\xE2"])->toArray()
+);
+
+Check::throws(
+    'INF тоже не переводится',
+    \Bitrix\Main\ArgumentException::class,
+    static fn() => SmartStd::toObject(['x' => INF])->toArray()
+);
+
+// Причина в сообщении: без неё отказ не лучше прежнего TypeError.
+$reason = '';
+try
+{
+    SmartStd::toObject(['name' => "\xC0\xE1\xE2"])->toArray();
+}
+catch(\Bitrix\Main\ArgumentException $exception)
+{
+    $reason = $exception->getMessage();
+}
+
+Check::same('сообщение называет SmartStd', str_contains($reason, 'SmartStd'), true);
+Check::same('и причину отказа', str_contains($reason, 'UTF-8'), true);
+
+Check::group('обычные данные отказом не задеты');
+
+Check::same('массив собирается как прежде', SmartStd::toObject(['a' => 1, 'b' => 'x'])->toArray(), [
+    'a' => 1,
+    'b' => 'x',
+]);
+
 Check::finish();
