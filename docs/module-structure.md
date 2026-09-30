@@ -50,6 +50,7 @@ Composer разворачивает в целевой каталог **коре�
 | `CONTRIBUTING.md` | KEEP | |
 | `CLAUDE.md` | KEEP | памятка агенту: она про репозиторий, а не про модуль |
 | `.gitattributes`, `.gitignore` | KEEP | |
+| `.php-cs-fixer.dist.php` | KEEP | правила форматирования; гоняются `composer run lint`, не из `build.sh` |
 
 ## Почему документация не едет на портал
 

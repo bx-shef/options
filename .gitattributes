@@ -9,6 +9,7 @@
 /.gitattributes		export-ignore
 /.github/		export-ignore
 /.gitignore		export-ignore
+/.php-cs-fixer.dist.php	export-ignore
 /CLAUDE.md		export-ignore
 /CONTRIBUTING.md	export-ignore
 /docs/			export-ignore

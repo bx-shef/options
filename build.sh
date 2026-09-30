@@ -54,6 +54,7 @@ KEEP=(
 	'.gitattributes'
 	'.github/'
 	'.gitignore'
+	'.php-cs-fixer.dist.php'
 	'CLAUDE.md'
 	'CONTRIBUTING.md'
 	'build.sh'

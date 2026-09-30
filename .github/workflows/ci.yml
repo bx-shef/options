@@ -79,9 +79,34 @@ jobs:
           # Пустой артефакт означал бы, что сборка молча ничего не собрала.
           if-no-files-found: error
 
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Забрать репозиторий
+        uses: actions/checkout@v4
+
+      - name: Поставить PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          # Одна версия, а не матрица: php-cs-fixer форматирует одинаково на
+          # любой из поддерживаемых, а лишние прогоны только тянут время.
+          php-version: '8.2'
+          extensions: mbstring
+          coverage: none
+
+      # Линтер живёт в require-dev, а не в build.sh: сборка обязана
+      # отрабатывать в свежем клоне без composer install. Отсюда и отдельная
+      # задача — composer нужен только ей.
+      - name: Поставить инструменты разработчика
+        run: composer install --no-interaction --no-progress
+
+      - name: Форматирование
+        run: composer run lint
+
   ci:
     name: CI
-    needs: [checks, build]
+    needs: [checks, build, lint]
     runs-on: ubuntu-latest
     # ⚠ Обязательно вместе с проверкой результатов ниже. Без always() задача
     # была бы ПРОПУЩЕНА при падении зависимости, а пропущенную проверку защита
@@ -95,7 +120,8 @@ jobs:
       - name: Сверить результаты зависимостей
         run: |
           if [ "${{ needs.checks.result }}" != 'success' ] \
-          || [ "${{ needs.build.result }}" != 'success' ]
+          || [ "${{ needs.build.result }}" != 'success' ] \
+          || [ "${{ needs.lint.result }}" != 'success' ]
           then
             echo '::error::Не прошла одна из зависимостей'
             exit 1

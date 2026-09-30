@@ -4,6 +4,11 @@
 composer.phar
 composer.lock
 
+# Линтер: инструменты разработчика и его кеш. В git их нет, значит нет и в
+# архиве — build.sh собирает из списка отслеживаемых файлов.
+/vendor/
+/.php-cs-fixer.cache
+
 /.versions
 /bitrix-version-builder
 
