@@ -1,10 +1,5 @@
 <?php
 
-if(file_exists(__DIR__.'/../../php_interface/def-functions.php'))
-{
-	require_once __DIR__.'/../../php_interface/def-functions.php';
-}
-
 if(!function_exists('_pr'))
 {
 	function _pr($o, bool $show = false, bool $die = false, bool $fullBackTrace = true): void
@@ -74,31 +69,5 @@ if(!function_exists('_log'))
 			//,\Bitrix\Main\IO\File::REWRITE ////
 			, \Bitrix\Main\IO\File::APPEND
 		);
-	}
-}
-
-if(!function_exists('_log1'))
-{
-	function _log1(array $value = [], string $fileName = 'log'): void
-	{
-		static $isFirstCall = false;
-		$mode = FILE_APPEND;
-		if(!$isFirstCall)
-		{
-			$isFirstCall = true;
-			// 0, а не null: третий параметр file_put_contents() — int, и
-			// null в него с PHP 8.1 deprecated. Смысл тот же — перезаписать.
-			$mode = 0; // REWRITE ////
-		}
-
-		$e = new \Exception();
-		file_put_contents($_SERVER['DOCUMENT_ROOT']."/local/log/".$fileName."_".date('dmY').".log", implode("\n", [
-			'',
-			' >>> '.date('d.m.Y H:i:s').' >>>',
-			print_r($value, true),
-			' >>> trace >>>',
-			print_r(str_replace($_SERVER["DOCUMENT_ROOT"], '', $e->getTraceAsString()), true),
-			' >>> >>> >>>'
-		]), $mode);
 	}
 }

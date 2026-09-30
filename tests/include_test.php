@@ -51,7 +51,6 @@ Check::group('функции до подключения модуля');
 // Именно «до»: иначе тест не отличил бы «include.php их объявил» от «они уже
 // были объявлены кем-то другим».
 Check::same('_log ещё нет', function_exists('_log'), false);
-Check::same('_log1 ещё нет', function_exists('_log1'), false);
 Check::same('_pr ещё нет', function_exists('_pr'), false);
 
 require_once $root.'/include.php';
@@ -59,8 +58,12 @@ require_once $root.'/include.php';
 Check::group('после подключения модуля');
 
 Check::same('_log объявлена', function_exists('_log'), true);
-Check::same('_log1 объявлена', function_exists('_log1'), true);
 Check::same('_pr объявлена', function_exists('_pr'), true);
+
+// Отрицательная проверка, и стоит она не для симметрии: _log1() модуль
+// объявлять перестал (CLAUDE.md, решения владельца), а вернуть её легко —
+// файл тот же, соседние две функции на месте. Вернут — тест покраснеет.
+Check::same('_log1 модуль не объявляет', function_exists('_log1'), false);
 
 Check::group('сигнатуры те, что зовёт трейт Log');
 
@@ -80,64 +83,5 @@ Check::same(
 	isset(CJSCore::$registered['shef-options-admin']),
 	true
 );
-
-Check::group('_log1() пишет и не сыплет deprecation');
-
-// Проверка не про запись как таковую, а про то, что вызов чист: обвязка
-// превращает warning, notice и deprecation в провал, а _log1() передавал null
-// третьим параметром file_put_contents() — с PHP 8.1 это deprecated, и в лог
-// портала капало при каждом первом вызове за запрос.
-//
-// Файл пишется в DOCUMENT_ROOT/local/log, поэтому корень на время проверки
-// подменяется временным каталогом.
-$documentRoot = $_SERVER['DOCUMENT_ROOT'] ?? '';
-$sandbox = sys_get_temp_dir().'/shef-options-log-'.getmypid();
-$logFile = $sandbox.'/local/log/probe_'.date('dmY').'.log';
-
-// Уборка вешается на завершение процесса, а не пишется в конце группы: этот
-// тест существует ради падения, а падение до конца группы не доходит и
-// оставило бы каталог в /tmp следующему прогону с тем же pid.
-register_shutdown_function(static function() use ($sandbox, $documentRoot): void
-{
-	$_SERVER['DOCUMENT_ROOT'] = $documentRoot;
-
-	array_map('unlink', glob($sandbox.'/local/log/*') ?: []);
-
-	foreach([$sandbox.'/local/log', $sandbox.'/local', $sandbox] as $dir)
-	{
-		is_dir($dir) && rmdir($dir);
-	}
-});
-
-if(is_dir($sandbox.'/local/log'))
-{
-	array_map('unlink', glob($sandbox.'/local/log/*') ?: []);
-}
-else
-{
-	mkdir($sandbox.'/local/log', 0777, true);
-}
-
-$_SERVER['DOCUMENT_ROOT'] = $sandbox;
-
-// Метка от «прошлого запроса»: первый вызов обязан её стереть. Без неё
-// проверки ниже проходили бы и при $mode = FILE_APPEND, то есть перезапись
-// никто бы не сторожил.
-file_put_contents($logFile, 'метка прошлого запроса');
-
-// Первый вызов перезаписывает, второй дописывает — ради этого в _log1() и
-// заведён статический флаг.
-_log1(['первый' => 1], 'probe');
-_log1(['второй' => 2], 'probe');
-
-Check::same('файл создан', is_file($logFile), true);
-
-// Читаем только если файл есть: иначе провал проверки выше превратился бы в
-// фатал на file_get_contents, и отчёт Check::finish() не напечатался бы.
-$written = is_file($logFile) ? (string)file_get_contents($logFile) : '';
-
-Check::same('метка прошлого запроса стёрта', str_contains($written, 'метка'), false);
-Check::same('первая запись на месте', str_contains($written, 'первый'), true);
-Check::same('вторая дописана, а не затёрла', str_contains($written, 'второй'), true);
 
 Check::finish();
