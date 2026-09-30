@@ -5,7 +5,7 @@ description: Готовые механики shef.options для классов 
 
 # Набор трейтов
 
-`lib/traitlist/` — девятнадцать трейтов. Половина из них нужна почти в каждом
+`lib/traitlist/` — двадцать трейтов. Половина из них нужна почти в каждом
 классе линейки, поэтому смотреть сюда стоит **до** того, как писать своё.
 
 **`shef.options` должен быть подключён до объявления вашего класса.** Трейт
@@ -35,6 +35,7 @@ description: Готовые механики shef.options для классов 
 | `\Shef\Options\TraitList\Tools\LogCollection` | накопление сообщений в `Dictionary` | нужен отчёт о прогоне |
 | `\Shef\Options\TraitList\Tools\SelfClass` | `getClassName()` — FQCN с ведущим слэшем | имя класса идёт в строку: в событие, в лог, в настройку |
 | `\Shef\Options\TraitList\Tools\XmlId` | идемпотентные XmlId и коды | сущность создаётся повторно и не должна двоиться |
+| `\Shef\Options\TraitList\Tools\EnumFromName` | `tryFromName()` / `fromName()` — вариант перечисления по ИМЕНИ | в настройке лежит имя варианта, а не значение; у чистого enum `from()` нет вовсе |
 | `\Shef\Options\TraitList\Constants\Catalog` | `getCatalogId()`, `getCatalogSKUId()` | работа с торговым каталогом |
 | `\Shef\Options\TraitList\Constants\Price` | `getBaseCurrency()` | работа с ценами |
 | `\Shef\Options\TraitList\Constants\Site` | `getBaseSiteId()` | многосайтовость |

@@ -328,8 +328,8 @@ abstract class AElement
 
 		$this->obj->SetPropertyValuesEx(
 			$elementId,
-            $iblockId,
-            $props
+			$iblockId,
+			$props
 		);
 
 		$result->setData([

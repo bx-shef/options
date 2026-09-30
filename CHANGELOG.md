@@ -1,5 +1,12 @@
 # change log
 
+## 3.1.0 — 2026-09-30
+* Сверка с настоящим архивом сборки 2.2.16 вернула три потери: они приехали вместе с файлами из поздней рабочей копии и ничем себя не выдавали
+* SmartStd снова \Stringable: вернулись implements и __toString(), который отдаёт объект как json (без экранирования кириллицы и слэшей, с отступами). Поддержку обещает CHANGELOG 2.2.12, а в дереве её не было — (string)$obj падал с «could not be converted to string»
+* Трейт \Shef\Options\TraitList\Tools\EnumFromName — выбор варианта перечисления по ИМЕНИ: tryFromName() возвращает null, fromName() бросает ValueError. Ядро такого не даёт: from() и tryFrom() работают по значению, а у чистого enum их нет вовсе. Трейтов стало двадцать
+* tests/enumfromname_test.php и проверка __toString() в tests/smartstd_test.php
+* build.sh, check_indent — отступы в PHP обязаны быть табами. Пробелы приезжают не одни: вместе с ними smartstd.php потерял __toString(). Поправлены smartstd.php, errorcollection.php и две строки lib/integration/iblock/aelement.php
+
 ## 3.0.9 — 2026-09-26
 * tests/assert.php и examples/_bootstrap.php — заглушённое «@» больше не провал. Обработчик ошибок зовётся и для него, и без проверки error_reporting() обвязка превращала в исключение штатно подавленное предупреждение. Нашлось в shef.problems: Monolog глушит @fileinode() на файле, который только что переименовали, и тест краснел. Незаглушённые warning и notice по-прежнему провал
 

@@ -43,6 +43,29 @@ namespace Bitrix\Main\Type
 	}
 }
 
+namespace Bitrix\Main\Web
+{
+	if(!class_exists(Json::class))
+	{
+		/**
+		 * Обёртка ядра над json_encode. Флаги передаются насквозь: тесту важно,
+		 * какие именно флаги выбрал код модуля, а не как их толкует ядро.
+		 */
+		class Json
+		{
+			public static function encode(mixed $data, int $options = 0): string
+			{
+				return json_encode($data, $options);
+			}
+
+			public static function decode(string $data): mixed
+			{
+				return json_decode($data, true);
+			}
+		}
+	}
+}
+
 namespace Bitrix\Main\Localization
 {
 	if(!class_exists(Loc::class))

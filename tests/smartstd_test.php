@@ -117,4 +117,34 @@ Check::same('оригинал не тронут', $original->props->color, 'кр
 Check::same('копия изменилась', $copy->props->color, 'синий');
 Check::same('это разные объекты', $original->props === $copy->props, false);
 
+Check::group('__toString — объект в строку');
+
+// CHANGELOG 2.2.12 обещает «Поддержка в SmartStd \Stringable», а в дереве
+// interface и метод однажды потерялись вместе с переносом файлов из поздней
+// рабочей копии: класс объявлял только Arrayable, и (string)$obj падал с
+// «could not be converted to string». Тест держит обещание CHANGELOG.
+$stringable = SmartStd::toObject(['code' => 'A', 'sort' => 100]);
+
+// instanceof \Stringable здесь ничего не доказывает: PHP 8 добавляет этот
+// интерфейс сам любому классу с __toString(), поэтому проверка зелёная и без
+// слова implements в объявлении. Проверено запуском, и мутация «убрать
+// \Stringable из implements» её не роняет. Значит проверяем поведение, а
+// объявление оставлено для читателя — так же, как в сборке 2.2.16.
+Check::same('объект приводится к строке', $stringable instanceof \Stringable, true);
+
+$json = (string)$stringable;
+
+Check::same('строка разбирается как json', json_decode($json, true), [
+	'code' => 'A',
+	'sort' => 100,
+]);
+
+// Флаги выбраны в самом методе, и два из них видны в результате глазами:
+// кириллица не экранируется, вывод с отступами.
+$cyrillic = (string)SmartStd::toObject(['name' => 'красный', 'url' => 'https://a/b']);
+
+Check::same('кириллица не экранирована', str_contains($cyrillic, 'красный'), true);
+Check::same('слэш не экранирован', str_contains($cyrillic, 'https://a/b'), true);
+Check::same('вывод с переносами', str_contains($cyrillic, "\n"), true);
+
 Check::finish();

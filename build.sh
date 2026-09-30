@@ -389,6 +389,39 @@ check_php()
 # Спрашиваем сам PHP, а не grep: «<?» внутри строки или комментария лежит в
 # своём токене, а опасный — остаётся куском T_INLINE_HTML. Наивный grep
 # краснел бы на каждом регулярном выражении вида /<?/ в чужом коде.
+# Отступы в PHP — табами.
+#
+# Не вкусовщина, а сторож после двух случаев подряд. Файлы, взятые из поздней
+# рабочей копии, приезжают с пробелами: так пришли lib/options/smartstd.php и
+# lib/traitlist/tools/errorcollection.php, и вместе с пробелами smartstd
+# потерял __toString(), обещанный в CHANGELOG 2.2.12. Сверка состава архива и
+# раскладки классов на это слепа — оба списка были зелёными.
+#
+# Строки докблоков (« * ») пропускаются: у них пробел перед звёздочкой законный.
+check_indent()
+{
+	local f lines bad=0
+
+	while IFS= read -r f
+	do
+		case "$f" in *.php) ;; *) continue ;; esac
+
+		# grep без совпадений возвращает 1, а скрипт под set -e — тогда || true.
+		lines="$(grep -nE '^ +[^ *]' "$f" | cut -d: -f1 | tr '\n' ' ' || true)"
+
+		if [ -n "$lines" ]
+		then
+			fail "отступ пробелами вместо табов: $f, строки: ${lines% }"
+			bad=1
+		fi
+	done < <(tracked_files)
+
+	if [ $bad -eq 0 ]
+	then
+		ok 'отступы в PHP — табами'
+	fi
+}
+
 check_short_tags()
 {
 	local f lines bad=0
@@ -585,6 +618,7 @@ run_checks()
 	check_gitattributes
 	check_encoding
 	check_php
+	check_indent
 	check_short_tags
 	check_js
 	check_lowercase
