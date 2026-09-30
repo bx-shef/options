@@ -92,6 +92,22 @@ Check::group('_log1() пишет и не сыплет deprecation');
 // подменяется временным каталогом.
 $documentRoot = $_SERVER['DOCUMENT_ROOT'] ?? '';
 $sandbox = sys_get_temp_dir().'/shef-options-log-'.getmypid();
+$logFile = $sandbox.'/local/log/probe_'.date('dmY').'.log';
+
+// Уборка вешается на завершение процесса, а не пишется в конце группы: этот
+// тест существует ради падения, а падение до конца группы не доходит и
+// оставило бы каталог в /tmp следующему прогону с тем же pid.
+register_shutdown_function(static function() use ($sandbox, $documentRoot): void
+{
+	$_SERVER['DOCUMENT_ROOT'] = $documentRoot;
+
+	array_map('unlink', glob($sandbox.'/local/log/*') ?: []);
+
+	foreach([$sandbox.'/local/log', $sandbox.'/local', $sandbox] as $dir)
+	{
+		is_dir($dir) && rmdir($dir);
+	}
+});
 
 if(is_dir($sandbox.'/local/log'))
 {
@@ -104,25 +120,24 @@ else
 
 $_SERVER['DOCUMENT_ROOT'] = $sandbox;
 
+// Метка от «прошлого запроса»: первый вызов обязан её стереть. Без неё
+// проверки ниже проходили бы и при $mode = FILE_APPEND, то есть перезапись
+// никто бы не сторожил.
+file_put_contents($logFile, 'метка прошлого запроса');
+
 // Первый вызов перезаписывает, второй дописывает — ради этого в _log1() и
 // заведён статический флаг.
 _log1(['первый' => 1], 'probe');
 _log1(['второй' => 2], 'probe');
 
-$logFile = $sandbox.'/local/log/probe_'.date('dmY').'.log';
-
 Check::same('файл создан', is_file($logFile), true);
 
-$written = (string)file_get_contents($logFile);
+// Читаем только если файл есть: иначе провал проверки выше превратился бы в
+// фатал на file_get_contents, и отчёт Check::finish() не напечатался бы.
+$written = is_file($logFile) ? (string)file_get_contents($logFile) : '';
 
+Check::same('метка прошлого запроса стёрта', str_contains($written, 'метка'), false);
 Check::same('первая запись на месте', str_contains($written, 'первый'), true);
 Check::same('вторая дописана, а не затёрла', str_contains($written, 'второй'), true);
-
-array_map('unlink', glob($sandbox.'/local/log/*') ?: []);
-rmdir($sandbox.'/local/log');
-rmdir($sandbox.'/local');
-rmdir($sandbox);
-
-$_SERVER['DOCUMENT_ROOT'] = $documentRoot;
 
 Check::finish();
