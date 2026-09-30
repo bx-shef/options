@@ -32,7 +32,8 @@ Composer разворачивает в целевой каталог **коре�
 | `install/version.php` | SHIP | `VERSION` и `VERSION_DATE` — источник истины о версии |
 | `install/css/` | SHIP | стили страницы настроек; установщик раскладывает их в `/bitrix/css` |
 | `.settings.php` | SHIP | настройки модуля: ajax-контроллеры, карта раскладки `installDir` |
-| `include.php` | SHIP | точка входа модуля: подключает `autoload.php` и `register-js.php` |
+| `include.php` | SHIP | точка входа модуля: подключает `autoload.php`, `def-functions.php` и `register-js.php` |
+| `def-functions.php` | SHIP | глобальные `_log()` и `_pr()`, которые зовёт трейт `TraitList\Log` |
 | `autoload.php` | SHIP | зависимости модуля и регистрация чужих namespace |
 | `project-context.php` | SHIP | знает, есть ли на проекте Composer и где его `vendor` |
 | `options.php`, `options_conf.php`, `optionsconfig.php` | SHIP | страница настроек модуля |

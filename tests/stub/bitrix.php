@@ -278,7 +278,34 @@ namespace Bitrix\Main\IO
 
 		class File
 		{
+			// Значения ядра: REWRITE = 0, APPEND = 1. Заглушка их
+			// СОБЛЮДАЕТ, а не принимает и забывает: иначе тест, который
+			// сторожит дописывание в _log(), был бы зелёным при любом флаге.
+			public const REWRITE = 0;
+			public const APPEND = 1;
+
 			public function __construct(private readonly string $path) {}
+
+			public static function putFileContents(
+				string $path,
+				mixed $data,
+				int $flags = self::REWRITE
+			): int|false
+			{
+				// Ядро недостающий каталог создаёт само — _log() пишет в
+				// /local/log/, которого на чистом портале нет.
+				$dir = dirname($path);
+				if(!is_dir($dir))
+				{
+					mkdir($dir, 0777, true);
+				}
+
+				return file_put_contents(
+					$path,
+					(string)$data,
+					($flags & self::APPEND) ? FILE_APPEND : 0
+				);
+			}
 
 			public function getPath(): string
 			{

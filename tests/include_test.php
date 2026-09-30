@@ -60,6 +60,12 @@ Check::group('после подключения модуля');
 Check::same('_log объявлена', function_exists('_log'), true);
 Check::same('_pr объявлена', function_exists('_pr'), true);
 
+// Объявление закрыто function_exists — иначе модуль дрался бы с проектом,
+// который объявил свои раньше. Повторное подключение это и показывает:
+// без охраны здесь был бы фатал «Cannot redeclare», а не проверка.
+require $root.'/def-functions.php';
+Check::same('повторное подключение не роняет', function_exists('_log'), true);
+
 // Отрицательная проверка, и стоит она не для симметрии: _log1() модуль
 // объявлять перестал (CLAUDE.md, решения владельца), а вернуть её легко —
 // файл тот же, соседние две функции на месте. Вернут — тест покраснеет.
@@ -83,5 +89,50 @@ Check::same(
 	isset(CJSCore::$registered['shef-options-admin']),
 	true
 );
+
+Check::group('_log() пишет и дописывает');
+
+// Реального вызова в тесте не было: про _log() спрашивала одна рефлексия, то
+// есть типы параметров. Запись это не сторожило — убери в _log() флаг APPEND,
+// и каждый вызов затирал бы предыдущий, а все тесты остались бы зелёными.
+//
+// Пишется в DOCUMENT_ROOT/local/log, поэтому корень на время проверки
+// подменяется временным каталогом. Каталога local/log в нём нет намеренно:
+// его создаёт сам вызов, как это делает ядро на чистом портале.
+$documentRoot = $_SERVER['DOCUMENT_ROOT'] ?? '';
+$sandbox = sys_get_temp_dir().'/shef-options-log-'.getmypid();
+$logFile = $sandbox.'/local/log/probe_'.date('dmY').'.log';
+
+// Уборка вешается на завершение процесса, а не пишется в конце группы: этот
+// тест существует ради падения, а падение до конца группы не доходит и
+// оставило бы каталог в /tmp следующему прогону с тем же pid.
+register_shutdown_function(static function() use ($sandbox, $documentRoot): void
+{
+	$_SERVER['DOCUMENT_ROOT'] = $documentRoot;
+
+	array_map('unlink', glob($sandbox.'/local/log/*') ?: []);
+
+	foreach([$sandbox.'/local/log', $sandbox.'/local', $sandbox] as $dir)
+	{
+		is_dir($dir) && rmdir($dir);
+	}
+});
+
+array_map('unlink', glob($sandbox.'/local/log/*') ?: []);
+
+$_SERVER['DOCUMENT_ROOT'] = $sandbox;
+
+_log(['первый' => 1], 'probe');
+_log(['второй' => 2], 'probe');
+
+Check::same('каталог и файл созданы вызовом', is_file($logFile), true);
+
+// Читаем только если файл есть: иначе провал проверки выше превратился бы в
+// фатал на file_get_contents, и отчёт Check::finish() не напечатался бы.
+$written = is_file($logFile) ? (string)file_get_contents($logFile) : '';
+
+Check::same('первая запись на месте', str_contains($written, 'первый'), true);
+Check::same('вторая дописана, а не затёрла', str_contains($written, 'второй'), true);
+Check::same('трасса записана', str_contains($written, '>>> trace >>>'), true);
 
 Check::finish();
