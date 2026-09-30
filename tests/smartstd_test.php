@@ -147,4 +147,17 @@ Check::same('кириллица не экранирована', str_contains($cy
 Check::same('слэш не экранирован', str_contains($cyrillic, 'https://a/b'), true);
 Check::same('вывод с переносами', str_contains($cyrillic, "\n"), true);
 
+Check::group('чужая кодировка не роняет объект');
+
+// toArray() внутри гоняет значение через json_encode/json_decode. Без
+// терпимых флагов строка не в UTF-8 роняет json_encode() в false, а
+// json_decode(false) под strict_types — это TypeError. Вылетал он из
+// __toString(), то есть из подстановки объекта в строку лога: вместо записи
+// в лог получался фатал в том месте, которое как раз пыталось записать сбой.
+$broken = SmartStd::toObject(['name' => "\xC0\xE1\xE2", 'ok' => 1]);
+
+Check::same('toArray() отдаёт массив', is_array($broken->toArray()), true);
+Check::same('соседнее значение целое', $broken->toArray()['ok'], 1);
+Check::same('приведение к строке не бросает', is_string((string)$broken), true);
+
 Check::finish();

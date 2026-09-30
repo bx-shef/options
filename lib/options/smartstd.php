@@ -21,8 +21,26 @@ class SmartStd
 	 */
 	public function toArray(): array
 	{
-		$value = json_decode(json_encode(static::toArrayInner($this)), true);
-		
+		// Флаги те же, что у __toString(), и стоят они здесь не для вида:
+		// без JSON_INVALID_UTF8_SUBSTITUTE строка в чужой кодировке роняет
+		// json_encode() в false, а json_decode(false) под strict_types — это
+		// TypeError. Вылетал он из __toString(), то есть из подстановки
+		// объекта в строку лога.
+		$json = json_encode(
+			static::toArrayInner($this),
+			JSON_UNESCAPED_SLASHES |
+			JSON_UNESCAPED_UNICODE |
+			JSON_PARTIAL_OUTPUT_ON_ERROR |
+			JSON_INVALID_UTF8_SUBSTITUTE
+		);
+
+		if(!is_string($json))
+		{
+			return [];
+		}
+
+		$value = json_decode($json, true);
+
 		if(!is_array($value))
 		{
 			return [];
