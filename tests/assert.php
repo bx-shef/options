@@ -20,6 +20,15 @@ final class Check
 
 	public static function boot(): void
 	{
+		// Обработчик пропускает уровни, которых нет в error_reporting(), —
+		// так отличается заглушённое «@» (см. ниже). Но маску задаёт php.ini,
+		// и на CI это E_ALL & ~E_DEPRECATED: deprecation ядра молча проходила
+		// мимо. Измерено: file_put_contents($f, 'x', null) — deprecated с
+		// 8.1 — тест не ронял. Поэтому маску задаём сами, а не берём у
+		// окружения: иначе обещание «warning и notice — это провал» зависит
+		// от того, на какой машине запустили.
+		error_reporting(E_ALL);
+
 		set_error_handler(static function(int $level, string $message, string $file, int $line): bool
 		{
 			// Заглушённое «@» — не провал: обработчик зовётся и для него, а

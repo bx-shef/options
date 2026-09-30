@@ -139,6 +139,11 @@ else
  * Ставится ПОСЛЕ пролога: у Битрикса свой обработчик, и перехватывать его
  * загрузку мы не собираемся.
  */
+// Маску задаём сами, а не берём у php.ini: на CI это E_ALL & ~E_DEPRECATED,
+// и deprecation ядра проходила мимо примера, не делая его код возврата
+// ненулевым. То же самое и в tests/assert.php.
+error_reporting(E_ALL);
+
 set_error_handler(static function(int $level, string $message, string $file, int $line): bool
 {
 	// Заглушённое «@» — не провал: так же поступает и ядро.

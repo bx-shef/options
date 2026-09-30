@@ -81,4 +81,48 @@ Check::same(
 	true
 );
 
+Check::group('_log1() пишет и не сыплет deprecation');
+
+// Проверка не про запись как таковую, а про то, что вызов чист: обвязка
+// превращает warning, notice и deprecation в провал, а _log1() передавал null
+// третьим параметром file_put_contents() — с PHP 8.1 это deprecated, и в лог
+// портала капало при каждом первом вызове за запрос.
+//
+// Файл пишется в DOCUMENT_ROOT/local/log, поэтому корень на время проверки
+// подменяется временным каталогом.
+$documentRoot = $_SERVER['DOCUMENT_ROOT'] ?? '';
+$sandbox = sys_get_temp_dir().'/shef-options-log-'.getmypid();
+
+if(is_dir($sandbox.'/local/log'))
+{
+	array_map('unlink', glob($sandbox.'/local/log/*') ?: []);
+}
+else
+{
+	mkdir($sandbox.'/local/log', 0777, true);
+}
+
+$_SERVER['DOCUMENT_ROOT'] = $sandbox;
+
+// Первый вызов перезаписывает, второй дописывает — ради этого в _log1() и
+// заведён статический флаг.
+_log1(['первый' => 1], 'probe');
+_log1(['второй' => 2], 'probe');
+
+$logFile = $sandbox.'/local/log/probe_'.date('dmY').'.log';
+
+Check::same('файл создан', is_file($logFile), true);
+
+$written = (string)file_get_contents($logFile);
+
+Check::same('первая запись на месте', str_contains($written, 'первый'), true);
+Check::same('вторая дописана, а не затёрла', str_contains($written, 'второй'), true);
+
+array_map('unlink', glob($sandbox.'/local/log/*') ?: []);
+rmdir($sandbox.'/local/log');
+rmdir($sandbox.'/local');
+rmdir($sandbox);
+
+$_SERVER['DOCUMENT_ROOT'] = $documentRoot;
+
 Check::finish();
