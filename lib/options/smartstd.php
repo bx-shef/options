@@ -13,7 +13,7 @@ use Bitrix\Main\Type\Contract;
  */
 class SmartStd
     extends \stdClass
-    implements Contract\Arrayable
+    implements Contract\Arrayable, \Stringable
 {
     /**
      * Преобразуетс в массив
@@ -51,6 +51,45 @@ class SmartStd
         }
 
         return $value;
+    }
+
+    /**
+     * Преобразует объект в строку — json с отступами
+     *
+     * Поддержку \Stringable модуль обещает с 2.2.12, но при переносе файлов
+     * из поздней рабочей копии и метод, и интерфейс потерялись: (string)$obj
+     * падал с «could not be converted to string».
+     *
+     * @return string
+     */
+    public function __toString(): string
+    {
+        try
+        {
+            $array = $this->toArray();
+        }
+        catch(ArgumentException $exception)
+        {
+            // __toString() зовут неявно: из строки лога, из сообщения
+            // исключения, из конкатенации. Бросить оттуда значит уронить то
+            // место, которое как раз пыталось записать сбой, — и вместо
+            // записи о проблеме получить вторую проблему. Поэтому причина
+            // возвращается текстом — сообщение уже называет и класс, и
+            // причину, оборачивать его во второй раз незачем.
+            return $exception->getMessage();
+        }
+
+        // Флаги — только про читаемость: данные уже прошли json в toArray(),
+        // значит кодируются, и терпимые флаги здесь ничего не решают.
+        // json_encode() вместо \Bitrix\Main\Web\Json::encode() намеренно:
+        // массив после toArray() плоский, обёртка ядра ничего не добавит,
+        // зато добавит зависимость и второй способ упасть.
+        return json_encode(
+            $array,
+            JSON_UNESCAPED_SLASHES |
+            JSON_UNESCAPED_UNICODE |
+            JSON_PRETTY_PRINT
+        );
     }
 
     public function __clone()

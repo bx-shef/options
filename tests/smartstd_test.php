@@ -159,4 +159,47 @@ Check::same('массив собирается как прежде', SmartStd::t
     'b' => 'x',
 ]);
 
+Check::group('__toString — объект в строку');
+
+// Поддержку \Stringable CHANGELOG обещает с 2.2.12, но при переносе файлов из
+// поздней рабочей копии и метод, и интерфейс потерялись — (string)$obj падал
+// с «could not be converted to string».
+//
+// instanceof \Stringable здесь ничего не доказывает: PHP 8 добавляет этот
+// интерфейс сам любому классу с __toString(), и проверка зелёная даже без
+// слова implements в объявлении. Проверено запуском, поэтому проверяем
+// поведение, а объявление оставлено для читателя.
+$json = (string)SmartStd::toObject(['name' => 'красный', 'url' => 'https://a/b']);
+
+Check::same('строка разбирается как json', json_decode($json, true), [
+    'name' => 'красный',
+    'url' => 'https://a/b',
+]);
+Check::same('кириллица не экранирована', str_contains($json, 'красный'), true);
+Check::same('слэш не экранирован', str_contains($json, 'https://a/b'), true);
+Check::same('вывод с переносами', str_contains($json, "\n"), true);
+
+Check::group('__toString не бросает никогда');
+
+// Его зовут неявно — из строки лога, из сообщения исключения, из
+// конкатенации. Исключение оттуда уронило бы ровно то место, которое
+// пыталось записать сбой. toArray() на таком значении бросает (см. выше),
+// а __toString() обязан вернуть текст.
+$broken = SmartStd::toObject(['name' => "\xC0\xE1\xE2"]);
+$text = '';
+$thrown = '';
+
+try
+{
+    $text = (string)$broken;
+}
+catch(\Throwable $exception)
+{
+    $thrown = get_class($exception);
+}
+
+Check::same('ничего не брошено', $thrown, '');
+Check::same('вернулась строка', is_string($text), true);
+Check::same('и она называет причину', str_contains($text, 'UTF-8'), true);
+
 Check::finish();
