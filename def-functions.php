@@ -86,7 +86,9 @@ if(!function_exists('_log1'))
 		if(!$isFirstCall)
 		{
 			$isFirstCall = true;
-			$mode = null; // REWRITE ////
+			// 0, а не null: третий параметр file_put_contents() — int, и
+			// null в него с PHP 8.1 deprecated. Смысл тот же — перезаписать.
+			$mode = 0; // REWRITE ////
 		}
 
 		$e = new \Exception();

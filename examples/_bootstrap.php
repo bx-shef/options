@@ -139,10 +139,30 @@ else
  * Ставится ПОСЛЕ пролога: у Битрикса свой обработчик, и перехватывать его
  * загрузку мы не собираемся.
  */
-set_error_handler(static function(int $level, string $message, string $file, int $line): bool
+// Маску задаём сами, а не берём у php.ini: на CI это E_ALL & ~E_DEPRECATED,
+// и deprecation ядра проходила мимо примера, не делая его код возврата
+// ненулевым. То же самое и в tests/assert.php.
+error_reporting(E_ALL);
+
+$moduleRoot = dirname(__DIR__);
+
+set_error_handler(static function(int $level, string $message, string $file, int $line) use ($moduleRoot): bool
 {
 	// Заглушённое «@» — не провал: так же поступает и ядро.
 	if(!(error_reporting() & $level))
+	{
+		return false;
+	}
+
+	// Deprecation считаем провалом только в своих файлах. Пример гоняется и на
+	// живом портале, а ядро Битрикса на свежем PHP сыплет своими deprecation —
+	// падать на них значит объявлять сломанным модуль за чужую строку в
+	// bitrix/modules/main. Предупреждения и notice роняют пример откуда угодно:
+	// на них пример и заводился.
+	if(
+		$level === E_DEPRECATED
+		&& !str_starts_with($file, $moduleRoot.DIRECTORY_SEPARATOR)
+	)
 	{
 		return false;
 	}
