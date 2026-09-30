@@ -39,6 +39,7 @@
 | `uninstall_test.php` | удаление модуля уносит его настройки и не трогает чужие | заглушки |
 | `include_test.php` | подключение модуля объявляет `_log()` и `_pr()` | заглушки |
 | `sync_test.php` | `sync.sh --to` не стирает локальные навыки получателя, `--check` их сверяет | не нужно |
+| `release_notes_test.php` | `build.sh --notes` собирает секции CHANGELOG от предыдущего выпущенного тега | не нужно |
 
 **Skills лежат в `.claude/skills/`** — по одному каталогу на навык, внутри
 `SKILL.md` с frontmatter (`name` строго по имени каталога, `description` —
