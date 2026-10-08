@@ -62,9 +62,24 @@ class Pid
             $stopSignal = 15;
         }
 
+        $basePath = static::getBasePath($group);
+
+        // Каталога группы нет — останавливать нечего, и это обычный случай, а
+        // не сбой: каталог создаётся первым запуском, а у агента, который ни
+        // разу не запускался, его не существует.
+        //
+        // Проверка обязательна. RecursiveDirectoryIterator на отсутствующем
+        // каталоге БРОСАЕТ UnexpectedValueException, а метод зовут из
+        // DoUninstall() — исключение оттуда обрывает удаление модуля на
+        // середине: файлы уже сняты, движки и регистрация остались. Так
+        // падало удаление shef.toolsai. Сосед clearDir() устроен так же.
+        if (!is_dir($basePath)) {
+            return $result;
+        }
+
         $iterator = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator(
-                static::getBasePath($group),
+                $basePath,
                 \RecursiveDirectoryIterator::SKIP_DOTS | \FilesystemIterator::FOLLOW_SYMLINKS
             ),
             \RecursiveIteratorIterator::SELF_FIRST
