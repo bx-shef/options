@@ -49,7 +49,10 @@ class Pid
      * @param int|null $stopSignal номер сигнала; null — SIGTERM (15),
      *                             0 — не посылать ничего
      *
-     * @return Result в данных filePathList — пути снятых файлов
+     * @return Result в данных filePathList — пути СНЯТЫХ файлов. Снятый —
+     *                не значит остановленный: замок снимается и тогда, когда
+     *                сигнал не послан (номер не прочитан, жив ли процесс —
+     *                выяснить нечем), — причина в этом случае лежит в ошибках
      */
     public static function removeByGroup(
         string $group,
@@ -57,10 +60,11 @@ class Pid
     ): Result {
         $result = new Result();
 
+        // Список кладётся в Result в конце, а не ссылкой заранее: ссылка
+        // внутри массива держится, пока ядро кладёт данные как есть, и
+        // молча оборвётся, стоит setData() начать их нормализовать.
         $list = [];
-        $result->setData([
-            'filePathList' => &$list
-        ]);
+        $result->setData(['filePathList' => $list]);
 
         if (null === $stopSignal) {
             // SIGTERM ////
@@ -79,8 +83,8 @@ class Pid
             // спуск вглубь не даёт ничего, а покупает выход за пределы
             // группы: одной символической ссылки хватало, чтобы метод снял
             // замки соседнего модуля и разослал SIGTERM его процессам —
-            // замерено. Сосед clearDir() обходит каталог так же, и в его
-            // докблоке это объяснено с самого начала.
+            // замерено. Сосед clearDir() обходит каталог так же — с 3.0.0,
+            // когда его оживили; до того он был таким же рекурсивным.
             $iterator = new \FilesystemIterator(
                 $basePath,
                 \FilesystemIterator::SKIP_DOTS | \FilesystemIterator::CURRENT_AS_FILEINFO
@@ -121,7 +125,7 @@ class Pid
             $result->addError(new Error($exception->getMessage()));
         }
 
-        unset($list);
+        $result->setData(['filePathList' => $list]);
 
         return $result;
     }
@@ -144,7 +148,7 @@ class Pid
      * Разделитель на конце префикса обязателен: без него каталогу
      * shef.options подошёл бы сосед shef.options-backup.
      */
-    private static function resolveGroupPath(
+    protected static function resolveGroupPath(
         string $group,
         Result $result
     ): null|string {
@@ -183,7 +187,7 @@ class Pid
      *
      * @param string[] $list пути снятых файлов, пополняется
      */
-    private static function stopByLockFile(
+    protected static function stopByLockFile(
         IO\File $file,
         string $fileName,
         int $stopSignal,
@@ -196,15 +200,26 @@ class Pid
 
         $pid = static::readPid($file, $fileName, $result);
 
-        // Сигнал шлётся, только когда известно, кому. «Процесса точно нет» —
-        // обычный случай: замок остался от упавшего процесса, и стрелять
-        // некуда. «Не знаю» считается за «жив», как и в clearDir().
-        if (
-            null !== $pid
-            && 0 !== $stopSignal
-            && false !== static::isProcessAlive($pid)
-        ) {
-            static::sendSignal($pid, $stopSignal, $result);
+        // Сигнал шлётся, только когда ТОЧНО известно, что процесс жив.
+        //
+        // «Не знаю» (нет ни /proc, ни ext-posix) здесь значит «не стрелять»,
+        // и это то же безопасное направление, что у clearDir(), хотя слова
+        // там обратные: clearDir() «не знаю» считает за «жив», потому что для
+        // него «жив» — это «не трогать». Здесь «жив» — это «выстрелить», и
+        // стрелять по номеру, про который ничего не известно, нельзя: номер
+        // мог достаться постороннему процессу. Замерено — посторонний
+        // процесс получал SIGTERM, а Result оставался чистым.
+        if (null !== $pid && 0 !== $stopSignal) {
+            $alive = static::isProcessAlive($pid);
+
+            if (true === $alive) {
+                static::sendSignal($pid, $stopSignal, $result);
+            } elseif (null === $alive) {
+                $result->addError(new Error(sprintf(
+                    'Can not tell whether %d is alive, signal not sent',
+                    $pid
+                )));
+            }
         }
 
         if ($file->delete()) {
@@ -231,10 +246,13 @@ class Pid
      * пользователя веб-сервера. Замерено, файл создавался.
      *
      * Номер сверяется с номером в ИМЕНИ файла: getFilePath() пишет
-     * «<префикс>_<pid>.lock». Расхождение означает испорченный или чужой
+     * «<префикс>_<pid>.lock» ВСЕГДА. Расхождение — испорченный или чужой
      * замок, и сигнал по такому номеру ушёл бы постороннему процессу.
+     * Имя без номера — тоже отказ, а не «сверять не с чем»: раньше сверка
+     * так и пропускалась, и замок «agent.lock» с номером постороннего
+     * процесса доводил до SIGTERM при чистом Result — замерено.
      */
-    private static function readPid(
+    protected static function readPid(
         IO\File $file,
         string $fileName,
         Result $result
@@ -255,10 +273,16 @@ class Pid
             return null;
         }
 
-        if (
-            preg_match('/(?:^|_)([0-9]+)\.lock$/', $fileName, $match) === 1
-            && (int)$match[1] !== $pid
-        ) {
+        if (preg_match('/(?:^|_)([0-9]+)\.lock$/', $fileName, $match) !== 1) {
+            $result->addError(new Error(sprintf(
+                'Lock file %s: no pid in name',
+                $file->getPath()
+            )));
+
+            return null;
+        }
+
+        if ((int)$match[1] !== $pid) {
             $result->addError(new Error(sprintf(
                 'Lock file %s: pid in name and in content differ',
                 $file->getPath()
@@ -271,59 +295,70 @@ class Pid
     }
 
     /**
-     * Посылает процессу сигнал остановки.
+     * Посылает процессу сигнал остановки. Не бросает: отказ — ошибка в
+     * Result, и замок после этого всё равно снимается.
      *
      * Ветка без ext-posix собирает команду для шелла, поэтому номера уходят
-     * в неё числами и через escapeshellarg(). Отсутствие процесса (ESRCH)
-     * ошибкой не считается: для «остановить группу» это уже результат.
+     * в неё числами и через escapeshellarg(). Нет и exec (disable_functions)
+     * — вызов бросает Error, который «@» не глушит; раньше он улетал наружу
+     * и замок оставался на месте.
+     *
+     * «Процесса уже нет» ошибкой не считается ни в одной ветке: для
+     * «остановить группу» это результат. kill в шелле кодом возврата его от
+     * «нет прав» не отличает, поэтому после любого отказа живость
+     * спрашивается ещё раз.
      */
-    private static function sendSignal(
+    protected static function sendSignal(
         int $pid,
         int $stopSignal,
         Result $result
     ): void {
-        if (
-            extension_loaded('posix')
-            && function_exists('posix_kill')
-        ) {
-            if (posix_kill($pid, $stopSignal)) {
-                return;
+        try {
+            if (
+                extension_loaded('posix')
+                && function_exists('posix_kill')
+            ) {
+                if (posix_kill($pid, $stopSignal)) {
+                    return;
+                }
+
+                // posix_get_last_error() после УСПЕШНОГО вызова не
+                // сбрасывается, поэтому читается только здесь, сразу после
+                // отказа posix_kill(), который его всегда выставляет.
+                $reason = posix_strerror(posix_get_last_error());
+            } else {
+                $output = [];
+                $code = 0;
+
+                @exec(
+                    sprintf(
+                        'kill -%s %s 2>/dev/null',
+                        escapeshellarg((string)$stopSignal),
+                        escapeshellarg((string)$pid)
+                    ),
+                    $output,
+                    $code
+                );
+
+                if ($code === 0) {
+                    return;
+                }
+
+                $reason = sprintf('kill exited with %d', $code);
             }
+        } catch (\Throwable $exception) {
+            $reason = $exception->getMessage();
+        }
 
-            // ESRCH ////
-            if (posix_get_last_error() === 3) {
-                return;
-            }
-
-            $result->addError(new Error(sprintf(
-                'Can not signal %d: %s',
-                $pid,
-                posix_strerror(posix_get_last_error())
-            )));
-
+        if (false === static::isProcessAlive($pid)) {
             return;
         }
 
-        $output = [];
-        $code = 0;
-
-        @exec(
-            sprintf(
-                'kill -%s %s',
-                escapeshellarg((string)$stopSignal),
-                escapeshellarg((string)$pid)
-            ),
-            $output,
-            $code
-        );
-
-        if ($code !== 0) {
-            $result->addError(new Error(sprintf(
-                'Can not signal %d: kill exited with %d',
-                $pid,
-                $code
-            )));
-        }
+        $result->addError(new Error(sprintf(
+            'Can not signal %d: %s',
+            $pid,
+            $reason
+        )));
     }
 
     // endregion ////

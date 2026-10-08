@@ -183,6 +183,10 @@ $response = Pid::removeByGroup('', 0);
 check('пустое имя группы отклонено', $response->isSuccess(), false);
 check('список пуст', $response->getData()['filePathList'], []);
 
+$response = Pid::removeByGroup('..', 0);
+
+check('«..» отклонено', $response->isSuccess(), false);
+
 step('О чём помнить');
 
 note('removeByGroup() ПО УМОЛЧАНИЮ шлёт SIGTERM процессам из файлов группы.');

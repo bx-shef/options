@@ -20,6 +20,7 @@ final class Check
     private static array $errors = [];
     /** @var string[] */
     private static array $skipped = [];
+    private static int $skippedChecks = 0;
     private static int $count = 0;
 
     public static function boot(): void
@@ -109,12 +110,17 @@ final class Check
      * Пропущенное считается отдельно и печатается в итоге. Пропущенная
      * проверка, засчитанная за пройденную, — отдельная ловушка, за которую в
      * этом репозитории уже заплачено дважды: защитой ветки и build.sh.
+     *
+     * $checks — сколько проверок НЕ выполнилось. Пропускают обычно группу
+     * целиком, и без числа итог врал бы в другую сторону: «пропущено 3», а
+     * на деле молча исчезли 7 проверок. Сторожит tests/assert_test.php.
      */
-    public static function skip(string $what, string $why): void
+    public static function skip(string $what, string $why, int $checks = 1): void
     {
         static::$skipped[] = sprintf('%s — %s', $what, $why);
+        static::$skippedChecks += $checks;
 
-        printf("  SKIP %s — %s%s", $what, $why, PHP_EOL);
+        printf("  SKIP %s — %s (проверок: %d)%s", $what, $why, $checks, PHP_EOL);
     }
 
     private static function fail(string $message): void
@@ -143,7 +149,7 @@ final class Check
             }
 
             if (!empty(static::$skipped)) {
-                printf('Пропущено: %d%s', count(static::$skipped), PHP_EOL);
+                printf('Пропущено проверок: %d%s', static::$skippedChecks, PHP_EOL);
             }
 
             exit(1);
@@ -152,7 +158,7 @@ final class Check
         printf('Проверок пройдено: %d%s', static::$count, PHP_EOL);
 
         if (!empty(static::$skipped)) {
-            printf('Пропущено: %d%s', count(static::$skipped), PHP_EOL);
+            printf('Пропущено проверок: %d%s', static::$skippedChecks, PHP_EOL);
             foreach (static::$skipped as $skipped) {
                 echo '  * ', $skipped, PHP_EOL;
             }

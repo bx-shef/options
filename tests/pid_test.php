@@ -42,7 +42,36 @@ require_once $root.'/lib/main/constants.php';
 require_once $root.'/lib/main/tempfile/manager.php';
 require_once $root.'/lib/main/tempfile/pid.php';
 
+use Bitrix\Main\Result;
 use Shef\Options\Main\TempFile\Pid;
+
+/**
+ * Жив ли процесс — «не знаю». Так выглядит хост без /proc и без ext-posix.
+ * Подмена работает потому, что вспомогательные методы Pid — protected
+ * static, а зовутся через static::.
+ */
+final class PidUnknownAlive extends Pid
+{
+    protected static function isProcessAlive(int $pid): null|bool
+    {
+        return null;
+    }
+}
+
+/**
+ * Считает попытки послать сигнал и ничего не посылает. Нужен там, где «не
+ * послали» и «послали» снаружи неотличимы: мёртвому процессу сигнал не
+ * вредит, сигнал 0 не вредит никому.
+ */
+final class PidSignalCounter extends Pid
+{
+    public static int $calls = 0;
+
+    protected static function sendSignal(int $pid, int $stopSignal, Result $result): void
+    {
+        static::$calls++;
+    }
+}
 
 $sandbox = sys_get_temp_dir().'/shef-options-pid-'.getmypid();
 
@@ -266,10 +295,16 @@ Check::group('вместо номера мусор');
 
 $dir = $makeGroup('мусорная-группа');
 
-// Единственный барьер перед шеллом в ветке без ext-posix. «1 ; touch …»
-// проходило приведение (int) и исполнялось; теперь содержимое обязано быть
-// одними цифрами.
-$lock = $makeLock($dir, 'agent_1.lock', '1 ; touch '.escapeshellarg($sandbox.'/PWNED'));
+// Номер в мусоре — своего ребёнка, а не «1»: на мутации «только цифры →
+// (int)» номер доживает до сигнала, и с «1» тест слал бы SIGTERM процессу
+// init. Сама инъекция проверяется ниже, в ветке без ext-posix — здесь
+// шелла нет, и маркер не появился бы в любом случае.
+[$junkProc, $junkPid] = $spawn();
+$lock = $makeLock(
+    $dir,
+    'agent_'.$junkPid.'.lock',
+    $junkPid.' ; touch '.escapeshellarg($sandbox.'/PWNED')
+);
 
 $result = Pid::removeByGroup('мусорная-группа');
 
@@ -279,8 +314,162 @@ Check::same(
     str_contains(implode(' ', $result->getErrorMessages()), 'holds no pid'),
     true
 );
-Check::same('вторая команда не исполнилась', file_exists($sandbox.'/PWNED'), false);
+Check::same('по мусору не стреляли', proc_get_status($junkProc)['running'], true);
 Check::same('замок снят', is_file($lock), false);
+
+Check::group('в имени нет номера');
+
+$dir = $makeGroup('безымянная-группа');
+[$namelessProc, $namelessPid] = $spawn();
+
+// getFilePath() пишет номер в имя ВСЕГДА, так что имя без номера — чужой или
+// рукотворный файл. Раньше сверка с именем на таком просто пропускалась, и
+// номер постороннего процесса доводил до SIGTERM при чистом Result.
+$lock = $makeLock($dir, 'agent.lock', (string)$namelessPid);
+
+$result = Pid::removeByGroup('безымянная-группа');
+
+Check::same('Result неуспешный', $result->isSuccess(), false);
+Check::same(
+    'причина названа',
+    str_contains(implode(' ', $result->getErrorMessages()), 'no pid in name'),
+    true
+);
+Check::same('не стреляли', proc_get_status($namelessProc)['running'], true);
+Check::same('замок снят', is_file($lock), false);
+
+Check::group('жив ли процесс — не знаю: не стреляем');
+
+$dir = $makeGroup('неизвестная-группа');
+[$unknownProc, $unknownPid] = $spawn();
+$makeLock($dir, 'agent_'.$unknownPid.'.lock', (string)$unknownPid);
+
+// Номер может достаться постороннему процессу, а проверить это нечем.
+// clearDir() в том же положении ничего не трогает; здесь «ничего не трогать»
+// значит «не стрелять». Замок снимается — в этом и работа метода.
+$result = PidUnknownAlive::removeByGroup('неизвестная-группа');
+
+Check::same('Result неуспешный', $result->isSuccess(), false);
+Check::same(
+    'причина названа',
+    str_contains(implode(' ', $result->getErrorMessages()), 'Can not tell'),
+    true
+);
+Check::same('процесс жив', proc_get_status($unknownProc)['running'], true);
+Check::same('замок снят', $result->getData()['filePathList'] !== [], true);
+
+Check::group('кому и когда сигнал вообще посылается');
+
+// Здесь не важно, что будет с процессом, — важно, была ли попытка. Мёртвому
+// процессу и сигналу 0 выстрел не вредит, поэтому снаружи «послали» и «не
+// послали» неотличимы, и проверять надо счётчиком.
+$dir = $makeGroup('счётная-группа');
+
+[$deadProc, $deadPid] = $spawn();
+proc_terminate($deadProc, 9);
+$waitGone($deadProc);
+$makeLock($dir, 'agent_'.$deadPid.'.lock', (string)$deadPid);
+
+PidSignalCounter::$calls = 0;
+PidSignalCounter::removeByGroup('счётная-группа');
+Check::same('мёртвому не шлём', PidSignalCounter::$calls, 0);
+
+[$liveProc, $livePid] = $spawn();
+$makeLock($dir, 'agent_'.$livePid.'.lock', (string)$livePid);
+
+PidSignalCounter::$calls = 0;
+PidSignalCounter::removeByGroup('счётная-группа', 0);
+Check::same('сигнал 0 — не шлём', PidSignalCounter::$calls, 0);
+
+$makeLock($dir, 'agent_'.$livePid.'.lock', (string)$livePid);
+
+PidSignalCounter::$calls = 0;
+PidSignalCounter::removeByGroup('счётная-группа', 15);
+Check::same('живому шлём ровно раз', PidSignalCounter::$calls, 1);
+
+Check::group('ветка без ext-posix: шелл');
+
+if (!is_dir('/proc')) {
+    Check::skip('kill через шелл', 'нет /proc — живость без posix не выяснить', 5);
+} else {
+    // В CI ext-posix есть, и ветку с шеллом — ту, где и была инъекция, —
+    // обычный прогон не видит: проверка про маркер была зелёной просто
+    // потому, что шелла не было. Поэтому сценарий гоняется в отдельном
+    // процессе с выключенным posix_kill.
+    $runWithout = static function (string $disable, string $group, string $content, string $name) use ($root, $sandbox): array {
+        $script = $sandbox.'/no-posix.php';
+        file_put_contents($script, '<?php
+            declare(strict_types=1);
+            define("BX_TEMPORARY_FILES_DIRECTORY", '.var_export($sandbox, true).');
+            require '.var_export($root.'/tests/stub/bitrix.php', true).';
+            require '.var_export($root.'/lib/options/singleton.php', true).';
+            require '.var_export($root.'/lib/main/constants.php', true).';
+            require '.var_export($root.'/lib/main/tempfile/manager.php', true).';
+            require '.var_export($root.'/lib/main/tempfile/pid.php', true).';
+            $dir = \Shef\Options\Main\TempFile\Pid::getBasePath($argv[1]);
+            @mkdir($dir, 0777, true);
+            file_put_contents($dir."/".$argv[3], $argv[2]);
+            $r = \Shef\Options\Main\TempFile\Pid::removeByGroup($argv[1]);
+            echo json_encode([
+                "posix" => function_exists("posix_kill"),
+                "exec" => function_exists("exec"),
+                "ok" => $r->isSuccess(),
+                "errors" => $r->getErrorMessages(),
+                "list" => $r->getData()["filePathList"],
+            ]);
+        ');
+
+        $output = [];
+        $code = 0;
+        exec(
+            escapeshellarg(PHP_BINARY)
+            .' -d '.escapeshellarg('disable_functions='.$disable)
+            .' '.escapeshellarg($script)
+            .' '.escapeshellarg($group)
+            .' '.escapeshellarg($content)
+            .' '.escapeshellarg($name)
+            .' 2>&1',
+            $output,
+            $code
+        );
+
+        return (array)json_decode(implode('', $output), true);
+    };
+
+    $noPosix = 'posix_kill,posix_get_last_error,posix_strerror';
+
+    [$shellProc, $shellPid] = $spawn();
+    $report = $runWithout($noPosix, 'шелл-группа', (string)$shellPid, 'agent_'.$shellPid.'.lock');
+
+    Check::same('posix_kill действительно выключен', $report['posix'] ?? null, false);
+    Check::same('процесс остановлен через kill', $waitGone($shellProc)['running'], false);
+
+    // Номер — живого процесса, и после него точка с запятой. На коде до
+    // правки это исполнялось; проверка здесь бьёт по-настоящему, потому что
+    // шелл есть.
+    [$injProc, $injPid] = $spawn();
+    $report = $runWithout(
+        $noPosix,
+        'инъекция-группа',
+        $injPid.' ; touch '.$sandbox.'/PWNED',
+        'agent_'.$injPid.'.lock'
+    );
+
+    Check::same('вторая команда не исполнилась', file_exists($sandbox.'/PWNED'), false);
+
+    // Нет и exec: вызов бросает Error, который «@» не глушит. Раньше он
+    // улетал из sendSignal(), и замок оставался на месте.
+    [$noExecProc, $noExecPid] = $spawn();
+    $report = $runWithout(
+        $noPosix.',exec',
+        'безexec-группа',
+        (string)$noExecPid,
+        'agent_'.$noExecPid.'.lock'
+    );
+
+    Check::same('отказ сигнала в Result', str_contains(implode(' ', $report['errors'] ?? []), 'Can not signal'), true);
+    Check::same('замок всё равно снят', count($report['list'] ?? []), 1);
+}
 
 Check::group('по пути группы лежит файл');
 
@@ -296,7 +485,7 @@ Check::same('файл не тронут', is_file($filePath), true);
 Check::group('каталог есть, читать нельзя');
 
 if ($isRoot) {
-    Check::skip('нечитаемый каталог даёт ошибку в Result', 'прогон от root, права не действуют');
+    Check::skip('нечитаемый каталог даёт ошибку в Result', 'прогон от root, права не действуют', 2);
 } else {
     $dir = $makeGroup('закрытая-группа');
     $makeLock($dir, 'agent_1.lock', '1');
@@ -319,7 +508,7 @@ if ($isRoot) {
 Check::group('удалить не удалось — остаток группы всё равно обходим');
 
 if ($isRoot) {
-    Check::skip('отказ удаления попадает в Result', 'прогон от root, права не действуют');
+    Check::skip('отказ удаления попадает в Result', 'прогон от root, права не действуют', 4);
 } else {
     $dir = $makeGroup('неудаляемая-группа');
     $first = $makeLock($dir, 'agent_1.lock', '1');
