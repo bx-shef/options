@@ -18,6 +18,8 @@ final class Check
 {
     /** @var string[] */
     private static array $errors = [];
+    /** @var string[] */
+    private static array $skipped = [];
     private static int $count = 0;
 
     public static function boot(): void
@@ -95,6 +97,26 @@ final class Check
         static::fail(sprintf('%s: исключение %s не брошено', $what, $exceptionClass));
     }
 
+    /**
+     * Проверка не выполнялась — и это НЕ «пройдено».
+     *
+     * Нужна там, где проверка зависит от окружения и под ним бессмысленна:
+     * права файловой системы под root не работают — каталог без прав на
+     * чтение читается, — и проверка молча зеленела бы. CI гоняет от обычного
+     * пользователя, значит там она выполняется; локально под root
+     * пропускается ВСЛУХ.
+     *
+     * Пропущенное считается отдельно и печатается в итоге. Пропущенная
+     * проверка, засчитанная за пройденную, — отдельная ловушка, за которую в
+     * этом репозитории уже заплачено дважды: защитой ветки и build.sh.
+     */
+    public static function skip(string $what, string $why): void
+    {
+        static::$skipped[] = sprintf('%s — %s', $what, $why);
+
+        printf("  SKIP %s — %s%s", $what, $why, PHP_EOL);
+    }
+
     private static function fail(string $message): void
     {
         static::$errors[] = $message;
@@ -120,10 +142,22 @@ final class Check
                 echo '  * ', $error, PHP_EOL;
             }
 
+            if (!empty(static::$skipped)) {
+                printf('Пропущено: %d%s', count(static::$skipped), PHP_EOL);
+            }
+
             exit(1);
         }
 
         printf('Проверок пройдено: %d%s', static::$count, PHP_EOL);
+
+        if (!empty(static::$skipped)) {
+            printf('Пропущено: %d%s', count(static::$skipped), PHP_EOL);
+            foreach (static::$skipped as $skipped) {
+                echo '  * ', $skipped, PHP_EOL;
+            }
+        }
+
         exit(0);
     }
 }

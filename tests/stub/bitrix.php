@@ -351,9 +351,14 @@ namespace Bitrix\Main\IO
                 return file_put_contents($this->path, (string)$data);
             }
 
+            /**
+             * Отказ глушится «@», как и в ядре: иначе обвязка tests/assert.php
+             * превратила бы warning в исключение, и ветку «не удалось удалить»
+             * в Pid::removeByGroup() нельзя было бы проверить вовсе.
+             */
             public function delete(): bool
             {
-                return is_file($this->path) && unlink($this->path);
+                return is_file($this->path) && @unlink($this->path);
             }
         }
     }
