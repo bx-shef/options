@@ -5,7 +5,10 @@
 # без соседей их классы с общим корнем будут «не найдены». eval-key не передаётся: выбор
 # навыка проверяет репозиторий навыков, здесь — только связь с кодом.
 name: skills
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
 
 permissions:
   contents: read
