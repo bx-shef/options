@@ -60,7 +60,6 @@ SHIP=(
 # поставки ссылается на неё адресами GitHub. В поставке остаётся только сам
 # README — как readme пакета: его показывает Packagist.
 KEEP=(
-	'.claude/'
 	'.gitattributes'
 	'.github/'
 	'.gitignore'

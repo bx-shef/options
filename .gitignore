@@ -19,9 +19,8 @@ composer.phar
 
 *.log
 
-# Отзывы о навыках: их пишет агент по shef-feedback, в репозиторий они не едут.
-# Без этой строки первый же git add -A роняет check_lists в build.sh.
-/.bitrixsh/
+# Сверка навыков с кодом (.github/workflows/skills.yml) кладёт сюда checkout'ы.
+/.check/
 install/**/*.min.min.*
 
 # собирается build.sh

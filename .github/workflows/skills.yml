@@ -1,0 +1,41 @@
+# CI репозитория МОДУЛЯ: навыки автора не расходятся с кодом (STANDARD п. 11).
+#
+# Навыки лежат не здесь, а в репозитории навыков. Проверка: каждый класс \Vendor\…, который
+# навык называет, объявлен в коде этого модуля из PR или соседних модулей со свежего main —
+# без соседей их классы с общим корнем будут «не найдены». eval-key не передаётся: выбор
+# навыка проверяет репозиторий навыков, здесь — только связь с кодом.
+name: skills
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  skills:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Этот модуль (из PR)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: .check/modules/shef.options
+          persist-credentials: false
+
+      - name: Навыки автора
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: bx-shef/skills
+          path: .check/skills
+          persist-credentials: false
+
+      # Соседний shef.problems: на его классы ссылается shef-use-logger.
+      - name: Соседний модуль shef.problems
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: bx-shef/problems
+          path: .check/modules/shef.problems
+          persist-credentials: false
+
+      - uses: bx-shef/skills-standard/action@v1
+        with:
+          dir: .check/skills/skills
+          code: .check/modules
