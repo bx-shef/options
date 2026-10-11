@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Shef\Options\Main\TempFile;
 
-use Bitrix\Main\IO\FileNotFoundException;
 use Bitrix\Main\Result;
 use Bitrix\Main\Error;
 use Bitrix\Main\IO;
@@ -38,13 +37,22 @@ class Pid
     }
 
     /**
-     * Удаляет pid-файл по группе
+     * Снимает pid-файлы группы и останавливает их процессы.
      *
-     * @param string $group
-     * @param int|null $stopSignal
+     * Ошибки складываются в Result и НЕ бросаются. Метод зовут из
+     * DoUninstall() модуля-потребителя, а исключение оттуда обрывает удаление
+     * модуля на середине: файлы уже сняты, движки и регистрация остались.
+     * Отказ на одном замке не отменяет остановку остальных.
      *
-     * @return Result
-     * @throws FileNotFoundException
+     * @param string $group имя группы. Каталог обязан лежать ВНУТРИ каталога
+     *                      библиотеки: пустое имя и «..» отклоняются
+     * @param int|null $stopSignal номер сигнала; null — SIGTERM (15),
+     *                             0 — не посылать ничего
+     *
+     * @return Result в данных filePathList — пути СНЯТЫХ файлов. Снятый —
+     *                не значит остановленный: замок снимается и тогда, когда
+     *                сигнал не послан (номер не прочитан, жив ли процесс —
+     *                выяснить нечем), — причина в этом случае лежит в ошибках
      */
     public static function removeByGroup(
         string $group,
@@ -52,65 +60,307 @@ class Pid
     ): Result {
         $result = new Result();
 
+        // Список кладётся в Result в конце, а не ссылкой заранее: ссылка
+        // внутри массива держится, пока ядро кладёт данные как есть, и
+        // молча оборвётся, стоит setData() начать их нормализовать.
         $list = [];
-        $result->setData([
-            'filePathList' => &$list
-        ]);
+        $result->setData(['filePathList' => $list]);
 
         if (null === $stopSignal) {
             // SIGTERM ////
             $stopSignal = 15;
         }
 
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator(
-                static::getBasePath($group),
-                \RecursiveDirectoryIterator::SKIP_DOTS | \FilesystemIterator::FOLLOW_SYMLINKS
-            ),
-            \RecursiveIteratorIterator::SELF_FIRST
-        );
+        $basePath = static::resolveGroupPath($group, $result);
+        if (null === $basePath) {
+            return $result;
+        }
 
-        foreach ($iterator as $item) {
-            if ($item->isFile()) {
-                $file = new IO\File($item->getPathname());
+        try {
+            // Обход ПЛОСКИЙ и без перехода по ссылкам.
+            //
+            // getFilePath() кладёт замки в каталог группы плоско, так что
+            // спуск вглубь не даёт ничего, а покупает выход за пределы
+            // группы: одной символической ссылки хватало, чтобы метод снял
+            // замки соседнего модуля и разослал SIGTERM его процессам —
+            // замерено. Сосед clearDir() обходит каталог так же — с 3.0.0,
+            // когда его оживили; до того он был таким же рекурсивным.
+            $iterator = new \FilesystemIterator(
+                $basePath,
+                \FilesystemIterator::SKIP_DOTS | \FilesystemIterator::CURRENT_AS_FILEINFO
+            );
 
-                if ($file->getExtension() !== 'lock') {
+            foreach ($iterator as $item) {
+                // isLink() спрашивается ПЕРВЫМ: isFile() идёт по ссылке и
+                // отвечает про цель.
+                if ($item->isLink() || !$item->isFile()) {
                     continue;
                 }
 
-                $pid = $file->getContents();
-                if ((int)$pid > 0) {
-                    if (
-                        extension_loaded('posix')
-                        && function_exists('posix_kill')) {
-                        $response = posix_kill((int)$pid, $stopSignal);
-                    } else {
-                        $response = @exec(sprintf(
-                            'kill -%s %s',
-                            $stopSignal,
-                            $pid
-                        ));
-                    }
+                try {
+                    static::stopByLockFile(
+                        new IO\File($item->getPathname()),
+                        $item->getFilename(),
+                        $stopSignal,
+                        $list,
+                        $result
+                    );
+                } catch (\Throwable $exception) {
+                    // Один испорченный замок не отменяет остановку группы.
+                    // Исчезнуть файл может и штатно: процесс группы
+                    // завершился сам и снял свой замок между листингом и
+                    // чтением.
+                    $result->addError(new Error($exception->getMessage()));
                 }
-
-
-                if ($file->delete()) {
-                    $list[] = $file->getPath();
-                } else {
-                    return $result->addError(new Error(sprintf(
-                        'Problem delete file %s',
-                        $file->getPath()
-                    )));
-                }
-
-                unset($file);
             }
+        } catch (\Throwable $exception) {
+            // Каталог есть, а заглянуть в него не удалось: нет прав на
+            // чтение (замки создал cron под другим пользователем, а удаляют
+            // модуль из админки по HTTP), каталог исчез между проверкой и
+            // обходом, по пути оказался не каталог.
+            //
+            // Это НЕ то же, что «каталога нет»: там останавливать нечего,
+            // здесь мы не смогли посмотреть. Первое — пустой успешный
+            // Result, второе — ошибка в Result.
+            $result->addError(new Error($exception->getMessage()));
         }
 
-        unset($item, $iterator, $list);
+        $result->setData(['filePathList' => $list]);
 
         return $result;
     }
+
+    /**
+     * Каталог группы, если он существует и лежит внутри каталога библиотеки.
+     *
+     * null — обходить нечего. Два разных случая: каталога нет (обычное дело,
+     * он создаётся первым запуском) и путь выводит за пределы библиотеки —
+     * во втором в Result лежит ошибка.
+     *
+     * Путь сверяется ПОСЛЕ разрешения, а не до: realpath() раскрывает и
+     * «..», и символические ссылки, поэтому проверять надо результат, а не
+     * исходную строку. Измерено, чего стоило отсутствие проверки: пустое имя
+     * группы давало сам каталог библиотеки и метод снимал замки ВСЕХ групп
+     * ВСЕХ модулей линейки, рассылая им SIGTERM; «..» уводило ещё выше.
+     * Правдоподобный путь к этому — не атака, а незаполненная настройка, из
+     * которой потребитель берёт имя группы.
+     *
+     * Разделитель на конце префикса обязателен: без него каталогу
+     * shef.options подошёл бы сосед shef.options-backup.
+     */
+    protected static function resolveGroupPath(
+        string $group,
+        Result $result
+    ): null|string {
+        $basePath = static::getBasePath($group);
+
+        if (!is_dir($basePath)) {
+            return null;
+        }
+
+        $real = realpath($basePath);
+        $root = realpath(sprintf(
+            '%s/%s',
+            Manager::getInstance()->getAbsoluteRoot(),
+            Constants::getModuleId()
+        ));
+
+        if (
+            false === $real
+            || false === $root
+            || !str_starts_with($real, $root.DIRECTORY_SEPARATOR)
+        ) {
+            $result->addError(new Error(sprintf(
+                'Group "%s" is outside of %s',
+                $group,
+                Constants::getModuleId()
+            )));
+
+            return null;
+        }
+
+        return $real;
+    }
+
+    /**
+     * Останавливает процесс одного замка и снимает файл.
+     *
+     * @param string[] $list пути снятых файлов, пополняется
+     */
+    protected static function stopByLockFile(
+        IO\File $file,
+        string $fileName,
+        int $stopSignal,
+        array &$list,
+        Result $result
+    ): void {
+        if ($file->getExtension() !== 'lock') {
+            return;
+        }
+
+        $pid = static::readPid($file, $fileName, $result);
+
+        // Сигнал шлётся, только когда ТОЧНО известно, что процесс жив.
+        //
+        // «Не знаю» (нет ни /proc, ни ext-posix) здесь значит «не стрелять»,
+        // и это то же безопасное направление, что у clearDir(), хотя слова
+        // там обратные: clearDir() «не знаю» считает за «жив», потому что для
+        // него «жив» — это «не трогать». Здесь «жив» — это «выстрелить», и
+        // стрелять по номеру, про который ничего не известно, нельзя: номер
+        // мог достаться постороннему процессу. Замерено — посторонний
+        // процесс получал SIGTERM, а Result оставался чистым.
+        if (null !== $pid && 0 !== $stopSignal) {
+            $alive = static::isProcessAlive($pid);
+
+            if (true === $alive) {
+                static::sendSignal($pid, $stopSignal, $result);
+            } elseif (null === $alive) {
+                $result->addError(new Error(sprintf(
+                    'Can not tell whether %d is alive, signal not sent',
+                    $pid
+                )));
+            }
+        }
+
+        if ($file->delete()) {
+            $list[] = $file->getPath();
+
+            return;
+        }
+
+        // Раньше здесь стоял return из всего метода, и остаток группы
+        // оставался неостановленным — а какие замки уцелеют, зависело от
+        // порядка readdir.
+        $result->addError(new Error(sprintf(
+            'Problem delete file %s',
+            $file->getPath()
+        )));
+    }
+
+    /**
+     * Номер процесса из замка; null — посылать сигнал некому.
+     *
+     * Содержимое обязано быть одними цифрами. Приведения (int) мало: оно
+     * пропускает «1 ; touch /tmp/x» — число получается, — а в ветке без
+     * ext-posix строка уходила в шелл, и вторая команда исполнялась от
+     * пользователя веб-сервера. Замерено, файл создавался.
+     *
+     * Номер сверяется с номером в ИМЕНИ файла: getFilePath() пишет
+     * «<префикс>_<pid>.lock» ВСЕГДА. Расхождение — испорченный или чужой
+     * замок, и сигнал по такому номеру ушёл бы постороннему процессу.
+     * Имя без номера — тоже отказ, а не «сверять не с чем»: раньше сверка
+     * так и пропускалась, и замок «agent.lock» с номером постороннего
+     * процесса доводил до SIGTERM при чистом Result — замерено.
+     */
+    protected static function readPid(
+        IO\File $file,
+        string $fileName,
+        Result $result
+    ): null|int {
+        $content = trim($file->getContents());
+
+        if (preg_match('/^[0-9]+$/', $content) !== 1) {
+            $result->addError(new Error(sprintf(
+                'Lock file %s holds no pid',
+                $file->getPath()
+            )));
+
+            return null;
+        }
+
+        $pid = (int)$content;
+        if ($pid <= 0) {
+            return null;
+        }
+
+        if (preg_match('/(?:^|_)([0-9]+)\.lock$/', $fileName, $match) !== 1) {
+            $result->addError(new Error(sprintf(
+                'Lock file %s: no pid in name',
+                $file->getPath()
+            )));
+
+            return null;
+        }
+
+        if ((int)$match[1] !== $pid) {
+            $result->addError(new Error(sprintf(
+                'Lock file %s: pid in name and in content differ',
+                $file->getPath()
+            )));
+
+            return null;
+        }
+
+        return $pid;
+    }
+
+    /**
+     * Посылает процессу сигнал остановки. Не бросает: отказ — ошибка в
+     * Result, и замок после этого всё равно снимается.
+     *
+     * Ветка без ext-posix собирает команду для шелла, поэтому номера уходят
+     * в неё числами и через escapeshellarg(). Нет и exec (disable_functions)
+     * — вызов бросает Error, который «@» не глушит; раньше он улетал наружу
+     * и замок оставался на месте.
+     *
+     * «Процесса уже нет» ошибкой не считается ни в одной ветке: для
+     * «остановить группу» это результат. kill в шелле кодом возврата его от
+     * «нет прав» не отличает, поэтому после любого отказа живость
+     * спрашивается ещё раз.
+     */
+    protected static function sendSignal(
+        int $pid,
+        int $stopSignal,
+        Result $result
+    ): void {
+        try {
+            if (
+                extension_loaded('posix')
+                && function_exists('posix_kill')
+            ) {
+                if (posix_kill($pid, $stopSignal)) {
+                    return;
+                }
+
+                // posix_get_last_error() после УСПЕШНОГО вызова не
+                // сбрасывается, поэтому читается только здесь, сразу после
+                // отказа posix_kill(), который его всегда выставляет.
+                $reason = posix_strerror(posix_get_last_error());
+            } else {
+                $output = [];
+                $code = 0;
+
+                @exec(
+                    sprintf(
+                        'kill -%s %s 2>/dev/null',
+                        escapeshellarg((string)$stopSignal),
+                        escapeshellarg((string)$pid)
+                    ),
+                    $output,
+                    $code
+                );
+
+                if ($code === 0) {
+                    return;
+                }
+
+                $reason = sprintf('kill exited with %d', $code);
+            }
+        } catch (\Throwable $exception) {
+            $reason = $exception->getMessage();
+        }
+
+        if (false === static::isProcessAlive($pid)) {
+            return;
+        }
+
+        $result->addError(new Error(sprintf(
+            'Can not signal %d: %s',
+            $pid,
+            $reason
+        )));
+    }
+
     // endregion ////
 
     public function __construct(
@@ -254,9 +504,20 @@ class Pid
             return $removed;
         }
 
-        foreach (new \DirectoryIterator($directory) as $item) {
+        // Обход в try: каталог есть, а прав на чтение может не быть — замки
+        // создаёт первый запуск, и его umask методу не подчиняется. Исключение
+        // отсюда роняло бы add(), то есть агент не стартовал бы вовсе, а
+        // clearDir() зовётся из add() на КАЖДОМ прогоне.
+        try {
+            $iterator = new \DirectoryIterator($directory);
+        } catch (\Throwable) {
+            return $removed;
+        }
+
+        foreach ($iterator as $item) {
             if (
                 $item->isDot()
+                || $item->isLink()
                 || !$item->isFile()
             ) {
                 continue;
@@ -272,13 +533,21 @@ class Pid
                 continue;
             }
 
-            // Удаляем, только когда процесса ТОЧНО нет: true и null оставляем.
-            if (false !== static::isProcessAlive((int)trim($file->getContents()))) {
-                continue;
-            }
+            try {
+                // Удаляем, только когда процесса ТОЧНО нет: true и null
+                // оставляем.
+                if (false !== static::isProcessAlive((int)trim($file->getContents()))) {
+                    continue;
+                }
 
-            if ($file->delete()) {
-                $removed[] = $file->getPath();
+                if ($file->delete()) {
+                    $removed[] = $file->getPath();
+                }
+            } catch (\Throwable) {
+                // Замок мог исчезнуть между листингом и чтением: процесс
+                // группы завершился сам и снял его. Чистку остальных это не
+                // отменяет.
+                continue;
             }
 
             unset($file);
