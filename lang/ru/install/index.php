@@ -8,7 +8,7 @@ $MESS['shef.options_PARTNER_URI'] = 'https://bx-shef.by';
 $MESS['SH_MOD_BACK'] = 'К списку модулей';
 $MESS['SH_MOD_INST_OK'] = 'Модуль успешно установлен';
 
-$MESS['SH_NEED_RIGHT_VER'] = 'Для установки данного решения необходима версия главного модуля #NEED# или выше.';
+$MESS['SH_NEED_RIGHT_VER'] = 'Для установки данного решения необходима версия главного модуля #NEED# или выше. Ваша версия #CURRENT#';
 $MESS['SH_NEED_MODULES'] = 'Для установки данного решения необходимо наличие модуля <a target="_blank" href="https://www.1c-bitrix.ru/products/cms/versions.php?module=#NEED#">#NEED#</a>.';
 $MESS['SH_NEED_MODULES_BY_VERSION'] = 'Для установки данного решения необходимо наличие модуля <a target="_blank" href="#URL#">#NEED#</a> версии #VER# и выше.';
 
