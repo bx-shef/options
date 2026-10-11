@@ -28,6 +28,9 @@
 		"ext-mbstring": "*",
 		"composer/installers": "^1.0 || ^2.0"
 	},
+	"suggest": {
+		"bx-shef/skills": "Навыки для ИИ-агентов к модулям shef.*: npx skills add bx-shef/skills"
+	},
 	"config": {
 		"allow-plugins": {
 			"composer/installers": true
