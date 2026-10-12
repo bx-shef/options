@@ -34,8 +34,13 @@ class shef_options extends CModule
 
     /** @var string  */
     public $PHP_MIN_VER = '8.2.0';
-    /** @var string  */
-    public $NEED_MAIN_VERSION = '22.600.300';
+    /**
+     * Ниже 26.x модуль не проверяется: стенд и все порталы линейки — на 26.x,
+     * а обещать работу на ядре, которого никто не видел, хуже, чем отказать.
+     *
+     * @var string
+     */
+    public $NEED_MAIN_VERSION = '26.0.0';
     /** @var array  */
     public $NEED_MODULES = [];
     /** @var array  */
@@ -519,7 +524,8 @@ class shef_options extends CModule
             $this->ShowForm(
                 'ERROR',
                 Loc::getMessage('SH_NEED_RIGHT_VER', [
-                    '#NEED#' => $this->NEED_MAIN_VERSION
+                    '#NEED#' => $this->NEED_MAIN_VERSION,
+                    '#CURRENT#' => SM_VERSION,
                 ])
             );
         }
