@@ -25,3 +25,6 @@ install/**/*.min.min.*
 
 # собирается build.sh
 /shef.options.zip
+
+# локальные клоны документации Битрикс (CLAUDE.md, «Документация и практики Битрикс»)
+/.bitrix-docs/
