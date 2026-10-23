@@ -17,6 +17,7 @@ use Bitrix\Main\Request;
 use Bitrix\Main\UI\Extension;
 use Shef\Options\Main\Options;
 use Shef\Options\Main\Utils;
+use Shef\Options\Ui\SettingsForm;
 
 Loc::loadMessages(Application::getDocumentRoot().'/bitrix/modules/main/options.php');
 Loc::loadMessages(__FILE__);
@@ -106,6 +107,12 @@ try {
         } else {
             if ($RestoreDefaults <> '') {
                 Config\Option::delete($mid);
+            } elseif (class_exists(SettingsForm::class) && (string)$request->getPost(SettingsForm::RENDERED) === 'Y') {
+                // Карточки (3.1.0): только пришедшие поля — форма без JS ничего не затирает
+                $cardTabs = array_filter($tabs, static fn ($tab): bool => $tab instanceof Options\Tab);
+                foreach (SettingsForm::collect($cardTabs, $request->getPostList()->toArray()) as $complexCode => $value) {
+                    Config\Option::set($mid, $complexCode, $value);
+                }
             } else {
                 /** @var Options\Tab $tab */
                 foreach ($tabs as $tab) {
@@ -167,6 +174,44 @@ try {
     return;
 }
 // region Render ////
+// Карточки в виде «Настроек BitrixGPT» (3.1.0): если форма умеет все поля вкладок;
+// иначе — прежние вкладки CAdminTabControl (поле вроде «Сотрудники» не пропадёт)
+$cardTabs = array_filter($tabs, static fn ($tab): bool => $tab instanceof Options\Tab);
+// Копия страницы в модуле при старом shef.options (без SettingsForm) — прежние вкладки, без ошибки
+if (class_exists(SettingsForm::class) && SettingsForm::supports($cardTabs)) {
+    Extension::load(SettingsForm::extensions());
+    $sections = SettingsForm::fromTabs(
+        $cardTabs,
+        static fn (string $code): string => (string)Config\Option::get($mid, $code, '')
+    );
+    $formAction = Utils::getCMainApplication()->GetCurPage().'?mid='.urlencode((string)$mid).'&lang='.LANGUAGE_ID;
+    $readOnly = $modulePerms < 'W' ? ' disabled' : '';
+    ?>
+<style><?=SettingsForm::style()?>
+.shef-opt-buttons { display: flex; justify-content: center; gap: 12px; padding: 16px 0 4px; }
+</style>
+<form method="POST" action="<?=htmlspecialcharsbx($formAction)?>" name="opt_form" id="shef_opt_form">
+    <?=bitrix_sessid_post();?>
+    <input type="hidden" name="<?=SettingsForm::RENDERED?>" value="" id="shef_opt_rendered">
+    <div id="shef-opt-cards"></div>
+    <div class="shef-opt-buttons">
+        <a href="<?=htmlspecialcharsbx($formAction)?>" class="ui-btn ui-btn-lg ui-btn-no-caps --air --style-plain"><?=Loc::getMessage('MAIN_RESET')?></a>
+        <button type="submit" name="Update" value="Y" class="ui-btn ui-btn-lg ui-btn-no-caps --air --style-filled"<?=$readOnly?>><?=GetMessage('MAIN_SAVE')?></button>
+        <button type="submit" name="RestoreDefaults" value="Y" class="ui-btn ui-btn-sm ui-btn-no-caps --air --style-plain-no-accent"<?=$readOnly?>
+            onclick="return confirm('<?=AddSlashes(GetMessage('MAIN_HINT_RESTORE_DEFAULTS_WARNING'))?>')"><?=GetMessage('MAIN_RESTORE_DEFAULTS')?></button>
+    </div>
+</form>
+<script><?=SettingsForm::script()?></script>
+<script>
+BX.ready(function()
+{
+    window.ShefUiSettingsForm && ShefUiSettingsForm.render(document.getElementById('shef-opt-cards'), <?=json_encode($sections, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)?>) && (document.getElementById('shef_opt_rendered').value = 'Y');
+});
+</script>
+<?php
+    return;
+}
+
 Extension::load([
     'shef-options-admin',
 ]);

@@ -42,6 +42,7 @@
 | `release_notes_test.php` | `build.sh --notes` собирает секции CHANGELOG от предыдущего выпущенного тега | не нужно |
 | `pid_test.php` | `Pid::removeByGroup()` не бросает исключений, не выходит за каталог группы и не стреляет по чужому номеру | заглушки |
 | `assert_test.php` | сама обвязка: `Check::skip()` не засчитывается за пройденное и виден в итоге | не нужно |
+| `settingsform_test.php` | форма настроек карточками (3.1.0): поля и имена, переключатель, описания без чужого HTML, ключи паролем, сохранение только пришедших полей; `supports()` — неизвестное поле оставляет прежние вкладки; `options.php` рисует карточки только при `supports()` | заглушки + `CTextParser`, `Extension` |
 
 **Навыков в этом репозитории нет.** Они живут в
 [bx-shef/skills](https://github.com/bx-shef/skills) — по
@@ -88,7 +89,10 @@ namespace как id модуля, а остальное — как путь **с
 `build.sh`, `check_lowercase`.
 
 **Страница настроек** — `options.php`, опции описываются в `options_conf.php`
-через класс `ShOptionsConfig` из `optionsconfig.php`. У самого `shef.options`
+через класс `ShOptionsConfig` из `optionsconfig.php`. С 3.1.0 страница рисуется карточками
+`Ui\SettingsForm` (вид «Настроек BitrixGPT»), если форма умеет все её поля (`supports()`);
+иначе — прежние вкладки `CAdminTabControl`. Сохранение карточек — `collect()`: только пришедшие
+поля, без флага отрисовки — ничего. У самого `shef.options`
 вкладка на ней ровно одна — `DEF`, «Общие». Вкладка `REQUIRE` («Зависимости»)
 собирается сама, но только когда в `.settings.php` непусты `requireModules` или
 `requirePhpExt`; у этого модуля они пусты. Вкладки с документацией больше нет —
