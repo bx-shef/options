@@ -133,6 +133,13 @@ Check::same('стиль карточек на месте', str_contains(Settings
 Check::same('штатных ui.section и ui.form-elements больше не грузим', array_values(array_intersect(SettingsForm::extensions(), ['ui.section', 'ui.form-elements.view'])), []);
 Check::same('JS формы на месте', str_contains(SettingsForm::script(), 'window.ShefUiSettingsForm'), true);
 
+Check::group('название с HTML-ссылкой «?» (модули дописывают FAQ в название)');
+$faqTab = (new Options\Tab('P'))->setName('P')->addOption((new Options\Checkbox('on'))->setTitle('Показывать <a class="q" href="/shef/x/faq/#faq-P" onclick="evil()" title="a">?</a>'));
+$faqField = SettingsForm::fromTabs([$faqTab], static fn(string $c): string => 'Y')[0]['fields'][0];
+Check::same('название — без тегов и без «?»', $faqField['label'], 'Показывать');
+Check::same('ссылка — значком, только href, без onclick', [str_contains($faqField['hintIcon'], 'href="/shef/x/faq/#faq-P"'), str_contains($faqField['hintIcon'], 'onclick'), str_contains($faqField['hintIcon'], 'title=')], [true, false, false]);
+Check::same('без ссылки в названии — значка нет', SettingsForm::fromTabs([$tab], static fn(string $c): string => '')[0]['fields'][1]['hintIcon'], '');
+
 Check::group('supports(): все поля вкладок форма умеет (3.1.0)');
 Check::same('вкладка из поддержанных полей — карточки', SettingsForm::supports([$tab]), true);
 $people = new Options\Department('PEOPLE');

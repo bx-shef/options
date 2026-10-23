@@ -93,13 +93,19 @@ final class SettingsForm
         }
 
         $current = $value($code);
+        // Модули дописывают в название ссылку «?» на свой FAQ (прежняя страница печатала его
+        // HTML): название — без тегов, ссылка — значком, через safeHtml (только href, без on*)
+        $title = (string)$option->getTitle();
+        $titleIcon = preg_match('~<a\s[^>]*>.*?</a>~is', $title, $found) ? static::safeHtml($found[0]) : '';
+        $label = trim(html_entity_decode(strip_tags((string)preg_replace('~<a\s[^>]*>.*?</a>~is', '', $title)), ENT_QUOTES, 'UTF-8'));
+        $icon = $hintIcon !== null ? $hintIcon($code) : '';
         $field = [
             'type' => $type,
             'name' => 'param_'.$code,
-            'label' => (string)$option->getTitle(),
+            'label' => $label,
             'description' => static::safeHtml($description),
             'hint' => $hint($code),
-            'hintIcon' => $hintIcon !== null ? $hintIcon($code) : '',
+            'hintIcon' => $icon !== '' ? $icon : (str_contains($titleIcon, '<a ') ? $titleIcon : ''),
             'value' => $current,
         ];
 
