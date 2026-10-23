@@ -109,7 +109,7 @@ try {
                 Config\Option::delete($mid);
             } elseif ((string)$request->getPost(SettingsForm::RENDERED) === 'Y') {
                 // Карточки (3.1.0): только пришедшие поля — форма без JS ничего не затирает
-                $cardTabs = array_filter($tabs, static fn($tab): bool => $tab instanceof Options\Tab);
+                $cardTabs = array_filter($tabs, static fn ($tab): bool => $tab instanceof Options\Tab);
                 foreach (SettingsForm::collect($cardTabs, $request->getPostList()->toArray()) as $complexCode => $value) {
                     Config\Option::set($mid, $complexCode, $value);
                 }
@@ -176,12 +176,12 @@ try {
 // region Render ////
 // Карточки в виде «Настроек BitrixGPT» (3.1.0): если форма умеет все поля вкладок;
 // иначе — прежние вкладки CAdminTabControl (поле вроде «Сотрудники» не пропадёт)
-$cardTabs = array_filter($tabs, static fn($tab): bool => $tab instanceof Options\Tab);
+$cardTabs = array_filter($tabs, static fn ($tab): bool => $tab instanceof Options\Tab);
 if (SettingsForm::supports($cardTabs)) {
     Extension::load(SettingsForm::extensions());
     $sections = SettingsForm::fromTabs(
         $cardTabs,
-        static fn(string $code): string => (string)Config\Option::get($mid, $code, '')
+        static fn (string $code): string => (string)Config\Option::get($mid, $code, '')
     );
     $formAction = Utils::getCMainApplication()->GetCurPage().'?mid='.urlencode((string)$mid).'&lang='.LANGUAGE_ID;
     $readOnly = $modulePerms < 'W' ? ' disabled' : '';
