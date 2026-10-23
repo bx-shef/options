@@ -97,3 +97,6 @@
 	.shef-ui-row__label { flex-basis: auto; min-height: 0; }
 	.shef-ui-row .ui-ctl.shef-ui-row__select { max-width: none; }
 }
+/* «?» у названия — кружок, как значки FAQ модулей */
+.shef-ui-row__q a { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background: var(--ui-color-accent-soft-blue-3, #e5f0fa); color: var(--ui-color-accent-main-link, #2067b0); font-size: 11px; font-weight: 600; line-height: 1; text-decoration: none; vertical-align: 1px; }
+.shef-ui-row__q a:hover { background: var(--ui-color-accent-main-link, #2067b0); color: #fff; }
