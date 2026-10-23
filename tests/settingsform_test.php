@@ -146,6 +146,6 @@ $people = new Options\Department('PEOPLE');
 Check::same('есть поле, которого форма не умеет (Department), — прежние вкладки', SettingsForm::supports([(new Options\Tab('X'))->setName('X')->addOption($people)]), false);
 Check::same('пусто — прежние вкладки', SettingsForm::supports([]), false);
 $page = (string)file_get_contents($root.'/options.php');
-Check::same('options.php: карточки только при supports(); сохранение карточек — collect() (только пришедшие поля)', [str_contains($page, 'if (SettingsForm::supports($cardTabs))'), str_contains($page, 'SettingsForm::collect($cardTabs, $request->getPostList()->toArray())'), str_contains($page, '$tabControl->Begin();')], [true, true, true]);
+Check::same('options.php: карточки только при supports(); сохранение карточек — collect() (только пришедшие поля)', [str_contains($page, 'if (class_exists(SettingsForm::class) && SettingsForm::supports($cardTabs))'), str_contains($page, 'SettingsForm::collect($cardTabs, $request->getPostList()->toArray())'), str_contains($page, '$tabControl->Begin();')], [true, true, true]);
 
 Check::finish();

@@ -107,7 +107,7 @@ try {
         } else {
             if ($RestoreDefaults <> '') {
                 Config\Option::delete($mid);
-            } elseif ((string)$request->getPost(SettingsForm::RENDERED) === 'Y') {
+            } elseif (class_exists(SettingsForm::class) && (string)$request->getPost(SettingsForm::RENDERED) === 'Y') {
                 // Карточки (3.1.0): только пришедшие поля — форма без JS ничего не затирает
                 $cardTabs = array_filter($tabs, static fn ($tab): bool => $tab instanceof Options\Tab);
                 foreach (SettingsForm::collect($cardTabs, $request->getPostList()->toArray()) as $complexCode => $value) {
@@ -177,7 +177,8 @@ try {
 // Карточки в виде «Настроек BitrixGPT» (3.1.0): если форма умеет все поля вкладок;
 // иначе — прежние вкладки CAdminTabControl (поле вроде «Сотрудники» не пропадёт)
 $cardTabs = array_filter($tabs, static fn ($tab): bool => $tab instanceof Options\Tab);
-if (SettingsForm::supports($cardTabs)) {
+// Копия страницы в модуле при старом shef.options (без SettingsForm) — прежние вкладки, без ошибки
+if (class_exists(SettingsForm::class) && SettingsForm::supports($cardTabs)) {
     Extension::load(SettingsForm::extensions());
     $sections = SettingsForm::fromTabs(
         $cardTabs,
