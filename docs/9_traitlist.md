@@ -20,6 +20,6 @@
 |        TraitList\Tools\SelfClass | Трейт для работы названиями классов                                                                         |
 |            TraitList\Tools\XmlId | Трейт для работы XmlId.<br/>Генерирует уникальные номера и т.п                                              |
 |           **TraitList\Security** | **Работа с пользователями**                                                                                 |
-|       TraitList\Security\FixUser | Используется в агентах и тп для инициализации юзера                                                         |
+|       TraitList\Security\FixUser | Устарел (3.4.0): подмена пользователя в агенте — только в cron (PHP CLI), в веб-запросе — исключение; удаляется в 4.0.0 |
 
 [← Тестирование](8_tests.md) | [↑ Содержание](../README.md)

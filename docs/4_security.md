@@ -15,13 +15,21 @@
 
 ## [`\Shef\Options\TraitList\Security\FixUser`] Трейт для инициализации пользователя
 
-Используется в агентах и тп для инициализации пользователя.
+> **Устарел (3.4.0), удаляется в 4.0.0.** Новым кодом не пользоваться: ID сотрудника передавайте
+> явно (дела — `AUTHOR_ID` и `setCheckPermissions(false)`, CRM — `Service\Context::setUserId()`).
 
-Через `TraitList\Security\FixUser::getInitedUserId` определяем какой пользователя нужен.
+Подменяет текущего пользователя на время работы агента — **только в процессе cron (PHP CLI)**.
+Подмена пишет пользователя в сессию (`CUser::Authorize()`). На хите посетителя это его сессия, и
+сбой посреди работы оставлял посетителя, даже анонима, под чужим именем — замер в
+[bx-shef/options#48](https://github.com/bx-shef/options/issues/48). С 3.4.0 в веб-запросе
+`initUser()` бросает `\LogicException` и ничего не трогает: агент ловит его своим `try/catch`.
 
-Через `TraitList\Security\FixUser::initUser` инициализируем пользователя. Запоминаем текущего пользователя.
-
-Через `TraitList\Security\FixUser::closeUser` закрыаем соединения пользователя. Восстанавливаем прошлого пользователя.
+- `TraitList\Security\FixUser::getInitedUserId` — какой пользователь нужен.
+- `TraitList\Security\FixUser::initUser` — подменить (только CLI), запомнив текущего. Возврат
+  ставится и в конец процесса: фатал не оставит подмену.
+- `TraitList\Security\FixUser::closeUser` — выход подменённого и возврат прежнего. Звать в
+  `finally`; повторный вызов ничего не делает.
+- `TraitList\Security\FixUser::canSubstituteUser` — можно ли подменять в этом процессе.
 
 
 
