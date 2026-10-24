@@ -52,6 +52,7 @@ SHIP=(
 	'install/'
 	'lang/'
 	'lib/'
+	'tools/'
 )
 
 # Остаётся в репозитории.
