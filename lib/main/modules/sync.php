@@ -22,9 +22,12 @@ class Sync
     public const SYNCED_PREFIX = 'SYS_sync_';
     public const OWNER = 'shef.options';
 
+    /** Только модули линейки: чужим модулям команда установщики не запускает. */
+    public const PREFIX = 'shef.';
+
     public function __construct(
         private readonly string $documentRoot,
-        private readonly string $prefix = 'shef.'
+        private readonly string $only = ''
     ) {
     }
 
@@ -43,7 +46,8 @@ class Sync
             }
             foreach (scandir($dir) ?: [] as $name) {
                 if (
-                    str_starts_with($name, $this->prefix)
+                    str_starts_with($name, self::PREFIX)
+                    && ($this->only === '' || $name === $this->only)
                     && preg_match('/^[a-z0-9]+\.[a-z0-9]+$/', $name)
                     && is_file($dir.'/'.$name.'/install/index.php')
                     && is_file($dir.'/'.$name.'/install/version.php')
@@ -139,6 +143,9 @@ class Sync
     public static function update(string $id, string $moduleDir): array
     {
         $done = [];
+        // Установленный модуль подключается до установщика: его InstallFiles() зовёт классы модуля
+        // (shef.toolsai — Kb\KbFiles, PublicPage), а автозагрузку они получают только так
+        \Bitrix\Main\Loader::includeModule($id);
         $module = static::installer($id, $moduleDir);
         if (method_exists($module, 'InstallFiles')) {
             $module->InstallFiles();
@@ -150,6 +157,42 @@ class Sync
         }
 
         return $done;
+    }
+
+    /**
+     * Выполнить план: установка и обновление — переданными функциями (в команде — дочерний процесс
+     * и update()), версия отмечается только при успехе. blocked — тоже сбой (код выхода).
+     *
+     * @param list<array{id: string, action: string, reason: string, version: string}> $plan
+     * @param callable(string): array{0: bool, 1: string} $install
+     * @param callable(string): array{0: bool, 1: string} $update
+     * @param callable(string, string): void $mark
+     * @return array{failed: int, lines: list<string>}
+     */
+    public static function run(array $plan, callable $install, callable $update, callable $mark): array
+    {
+        $failed = 0;
+        $lines = [];
+        foreach ($plan as $step) {
+            $line = sprintf('%-26s %-8s %-8s %s', $step['id'], $step['version'], $step['action'], $step['reason']);
+            if ($step['action'] === Planner::SKIP || $step['action'] === Planner::BLOCKED) {
+                $failed += $step['action'] === Planner::BLOCKED ? 1 : 0;
+                $lines[] = $line;
+                continue;
+            }
+            try {
+                [$ok, $details] = $step['action'] === Planner::INSTALL ? $install($step['id']) : $update($step['id']);
+            } catch (\Throwable $e) {
+                [$ok, $details] = [false, $e->getMessage()];
+            }
+            if ($ok) {
+                $mark($step['id'], $step['version']);
+            }
+            $failed += $ok ? 0 : 1;
+            $lines[] = $line.' — '.($ok ? 'готово' : 'ОШИБКА').($details !== '' ? ': '.$details : '');
+        }
+
+        return ['failed' => $failed, 'lines' => $lines];
     }
 
     /** Объект установщика модуля (класс — ID через подчёркивание, как требует ядро). */

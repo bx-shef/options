@@ -12,6 +12,22 @@ declare(strict_types=1);
 
 namespace Bitrix\Main
 {
+    /** Подключение модуля: запоминаем, кого и до каких вызовов установщика. */
+    class Loader
+    {
+        /** @var list<string> */
+        public static array $included = [];
+
+        public static function includeModule(string $moduleName): bool
+        {
+            static::$included[] = $moduleName;
+            if (class_exists('shef_upd', false)) {
+                \shef_upd::$calls[] = 'include:'.$moduleName;
+            }
+            return true;
+        }
+    }
+
     class ModuleManager
     {
         /** @var array<string, true> */
@@ -94,10 +110,37 @@ namespace {
 
     $make('bitrix/modules', 'shef.upd', '1.1.0', [], "<?php\nclass shef_upd { public static array \$calls = []; public function InstallFiles(): bool { static::\$calls[] = 'files'; return true; } public function installModuleData(): bool { static::\$calls[] = 'data'; return true; } public function InstallDB(): bool { static::\$calls[] = 'db'; return true; } }\n");
     $make('bitrix/modules', 'shef.nofiles', '1.0.0', [], "<?php\nclass shef_nofiles {}\n");
-    Check::same('файлы и данные — да, InstallDB — нет (регистрацию не трогаем)', [Sync::update('shef.upd', "$portal/bitrix/modules/shef.upd"), \shef_upd::$calls], [['файлы', 'данные'], ['files', 'data']]);
+    require_once "$portal/bitrix/modules/shef.upd/install/index.php";
+    Check::same('модуль подключён до установщика; файлы и данные — да, InstallDB — нет (регистрацию не трогаем)', [Sync::update('shef.upd', "$portal/bitrix/modules/shef.upd"), \shef_upd::$calls], [['файлы', 'данные'], ['include:shef.upd', 'files', 'data']]);
     Check::same('у установщика нечего звать — пусто, без ошибки', Sync::update('shef.nofiles', "$portal/bitrix/modules/shef.nofiles"), []);
     Sync::markSynced('shef.upd', '1.1.0');
     Check::same('синхронизированная версия — в настройках shef.options', Option::get('shef.options', 'SYS_sync_shef.upd', ''), '1.1.0');
+
+    Check::same('чужой вендор не находится, отбор по одному ID — только он', [array_keys($sync->discover()) === array_keys(array_filter($sync->discover(), static fn(string $d, string $id): bool => str_starts_with($id, 'shef.'), ARRAY_FILTER_USE_BOTH)), array_keys((new Sync($portal, 'shef.problems'))->discover())], [true, ['shef.problems']]);
+
+    Check::group('Sync::run: выполнение плана');
+
+    $marked = [];
+    $mark = static function (string $id, string $v) use (&$marked): void {
+        $marked[] = $id.'@'.$v;
+    };
+    $plan = [
+        ['id' => 'a.a', 'action' => Planner::INSTALL, 'reason' => '', 'version' => '1'],
+        ['id' => 'b.b', 'action' => Planner::INSTALL, 'reason' => '', 'version' => '2'],
+        ['id' => 'c.c', 'action' => Planner::UPDATE, 'reason' => '', 'version' => '3'],
+        ['id' => 'd.d', 'action' => Planner::UPDATE, 'reason' => '', 'version' => '4'],
+        ['id' => 'e.e', 'action' => Planner::SKIP, 'reason' => '', 'version' => '5'],
+        ['id' => 'f.f', 'action' => Planner::BLOCKED, 'reason' => 'нет: x', 'version' => '6'],
+    ];
+    $r = Sync::run(
+        $plan,
+        static fn(string $id): array => $id === 'a.a' ? [true, 'установлен'] : [false, 'нет модуля currency'],
+        static fn(string $id): array => $id === 'c.c' ? [true, 'файлы'] : throw new \RuntimeException('Class not found'),
+        $mark
+    );
+    Check::same('версия — только у успешных', $marked, ['a.a@1', 'c.c@3']);
+    Check::same('сбои: отказ установки, исключение обновления, блокировка', $r['failed'], 3);
+    Check::same('текст отказа и исключения — в отчёте', [str_contains($r['lines'][1], 'ОШИБКА: нет модуля currency'), str_contains($r['lines'][3], 'ОШИБКА: Class not found'), str_ends_with($r['lines'][4], 'skip     ')], [true, true, true]);
 
     exec('rm -rf '.escapeshellarg($portal));
 
