@@ -116,7 +116,7 @@ namespace {
     Sync::markSynced('shef.upd', '1.1.0');
     Check::same('синхронизированная версия — в настройках shef.options', Option::get('shef.options', 'SYS_sync_shef.upd', ''), '1.1.0');
 
-    Check::same('чужой вендор не находится, отбор по одному ID — только он', [array_keys($sync->discover()) === array_keys(array_filter($sync->discover(), static fn(string $d, string $id): bool => str_starts_with($id, 'shef.'), ARRAY_FILTER_USE_BOTH)), array_keys((new Sync($portal, 'shef.problems'))->discover())], [true, ['shef.problems']]);
+    Check::same('чужой вендор не находится, отбор по одному ID — только он', [array_keys($sync->discover()) === array_keys(array_filter($sync->discover(), static fn (string $d, string $id): bool => str_starts_with($id, 'shef.'), ARRAY_FILTER_USE_BOTH)), array_keys((new Sync($portal, 'shef.problems'))->discover())], [true, ['shef.problems']]);
 
     Check::group('Sync::run: выполнение плана');
 
@@ -134,8 +134,8 @@ namespace {
     ];
     $r = Sync::run(
         $plan,
-        static fn(string $id): array => $id === 'a.a' ? [true, 'установлен'] : [false, 'нет модуля currency'],
-        static fn(string $id): array => $id === 'c.c' ? [true, 'файлы'] : throw new \RuntimeException('Class not found'),
+        static fn (string $id): array => $id === 'a.a' ? [true, 'установлен'] : [false, 'нет модуля currency'],
+        static fn (string $id): array => $id === 'c.c' ? [true, 'файлы'] : throw new \RuntimeException('Class not found'),
         $mark
     );
     Check::same('версия — только у успешных', $marked, ['a.a@1', 'c.c@3']);
