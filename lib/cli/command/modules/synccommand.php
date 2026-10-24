@@ -6,6 +6,7 @@ namespace Shef\Options\Cli\Command\Modules;
 
 use Bitrix\Main\Application;
 use Bitrix\Main\ModuleManager;
+use Shef\Options\Main\Modules\Layout;
 use Shef\Options\Main\Modules\Planner;
 use Shef\Options\Main\Modules\Sync;
 use Symfony\Component\Console\Command\Command;
@@ -78,8 +79,33 @@ class SyncCommand extends Command
         foreach ($result['lines'] as $line) {
             $output->writeln($line);
         }
+        $this->gitCheck($root, $output);
 
         return $result['failed'] > 0 ? Command::FAILURE : Command::SUCCESS;
+    }
+
+    /**
+     * Портал из git (issue #55): файлы, которые установщики положили или поменяли и которых нет в
+     * git, — следующий деплой их остановит (изменённые) или затрёт (новые). Только сообщение:
+     * ничего не откатывает и не коммитит. Портал без git — молча.
+     */
+    private function gitCheck(string $root, OutputInterface $output): void
+    {
+        $top = trim((string)shell_exec('git -C '.escapeshellarg($root).' rev-parse --show-toplevel 2>/dev/null'));
+        if ($top === '') {
+            return;
+        }
+        $prefix = str_starts_with($root, $top.'/') ? substr($root, strlen($top) + 1).'/' : '';
+        exec('git -C '.escapeshellarg($top).' status --porcelain --untracked-files=all -- '.escapeshellarg($root).' 2>/dev/null', $rows);
+        $drift = Layout::gitDrift($rows, $prefix);
+        if ($drift === []) {
+            return;
+        }
+        $output->writeln('');
+        $output->writeln('Дерево git портала разошлось с файлами модулей — внесите их в git, иначе следующий деплой остановится или затрёт их (tools/layout.php shef.options собирает их без портала):');
+        foreach ($drift as $line) {
+            $output->writeln('  '.$line);
+        }
     }
 
     /** @return array{0: bool, 1: string} */
