@@ -1,0 +1,105 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * shef:modules:sync — что ставить, что обновлять и в каком порядке (issue #53).
+ *
+ * Planner — без ядра. Sync — на временном каталоге «портала» и заглушке ModuleManager: находит
+ * модули в bitrix/modules и local/modules, читает версию и зависимости, обновление зовёт
+ * InstallFiles() и installModuleData() установщика, синхронизированная версия — в настройках.
+ */
+
+namespace Bitrix\Main
+{
+    class ModuleManager
+    {
+        /** @var array<string, true> */
+        public static array $installed = [];
+
+        public static function isModuleInstalled(string $id): bool
+        {
+            return isset(static::$installed[$id]);
+        }
+    }
+}
+
+namespace {
+    $root = dirname(__DIR__);
+
+    require_once $root.'/tests/stub/bitrix.php';
+    require_once $root.'/tests/assert.php';
+    require_once $root.'/lib/main/modules/planner.php';
+    require_once $root.'/lib/main/modules/sync.php';
+
+    use Bitrix\Main\Config\Option;
+    use Bitrix\Main\ModuleManager;
+    use Shef\Options\Main\Modules\Planner;
+    use Shef\Options\Main\Modules\Sync;
+
+    $m = static fn (string $id, array $req = [], bool $inst = false, string $synced = '', string $ver = '1.0.0'): array
+        => ['id' => $id, 'version' => $ver, 'requires' => $req, 'installed' => $inst, 'synced' => $synced];
+    $actions = static fn (array $plan): array => array_map(static fn (array $s): string => $s['id'].':'.$s['action'], $plan);
+
+    Check::group('Planner: порядок и действия');
+
+    $line = [
+        $m('shef.toolsai', ['shef.options', 'shef.problems', 'ai']),
+        $m('shef.currency', ['shef.options', 'shef.problems', 'shef.insync', 'currency']),
+        $m('shef.insync', ['shef.options', 'shef.problems']),
+        $m('shef.problems', ['shef.options']),
+        $m('shef.options', [], true, '3.0.16', '3.2.0'),
+    ];
+    Check::same('зависимости раньше зависимых, установленный с новыми файлами — обновить', $actions(Planner::plan($line, ['ai', 'currency'])), [
+        'shef.options:update', 'shef.problems:install', 'shef.toolsai:install', 'shef.insync:install', 'shef.currency:install',
+    ]);
+    Check::same('порядок не зависит от порядка на диске', $actions(Planner::plan(array_reverse($line), ['ai', 'currency'])), $actions(Planner::plan($line, ['ai', 'currency'])));
+    Check::same('нет модуля ядра — заблокирован, с причиной', array_values(array_filter(Planner::plan($line, ['ai']), static fn (array $s): bool => $s['id'] === 'shef.currency'))[0]['reason'], 'нет: currency');
+    Check::same('зависимость заблокирована — зависимый тоже', $actions(Planner::plan([$m('a.b', ['x.y']), $m('c.d', ['a.b'])])), ['a.b:blocked', 'c.d:blocked']);
+    Check::same('актуальный — пропустить; неизвестная синхронизация — обновить', $actions(Planner::plan([$m('a.b', [], true, '1.0.0'), $m('c.d', [], true, '')])), ['a.b:skip', 'c.d:update']);
+    Check::same('установленный не блокируется отсутствующей зависимостью (его уже ставили)', $actions(Planner::plan([$m('a.b', ['x.y'], true, '0.9')])), ['a.b:update']);
+    Check::same('цикл — заблокирован', $actions(Planner::plan([$m('a.b', ['c.d']), $m('c.d', ['a.b'])])), ['a.b:blocked', 'c.d:blocked']);
+    Check::same('--module: только он и его зависимости, по порядку', $actions(Planner::plan($line, ['ai', 'currency'], ['shef.insync'])), ['shef.options:update', 'shef.problems:install', 'shef.insync:install']);
+
+    Check::group('Sync: модули на диске');
+
+    $portal = sys_get_temp_dir().'/shef-sync-'.getmypid();
+    $make = static function (string $base, string $id, string $ver, array $req = [], string $installer = '') use ($portal): void {
+        $dir = "$portal/$base/$id";
+        @mkdir("$dir/install", 0777, true);
+        file_put_contents("$dir/install/version.php", "<?php\n\$arModuleVersion = ['VERSION' => '$ver', 'VERSION_DATE' => '2026-10-24 12:00:00'];\n");
+        file_put_contents("$dir/install/index.php", $installer ?: "<?php\n");
+        file_put_contents("$dir/.settings.php", "<?php\nreturn ['requireModules' => ['value' => ".var_export($req, true).", 'readonly' => true]];\n");
+    };
+    $make('bitrix/modules', 'shef.options', '3.2.0');
+    $make('bitrix/modules', 'shef.problems', '2.0.1', ['shef.options']);
+    $make('bitrix/modules', 'shef.currency', '2.0.0', ['shef.options', 'currency']);
+    $make('local/modules', 'shef.currency', '2.1.0', ['shef.options', 'currency']);
+    $make('bitrix/modules', 'bitrix.other', '1.0.0');
+    @mkdir("$portal/bitrix/modules/shef.broken", 0777, true);
+
+    $sync = new Sync($portal);
+    $found = $sync->discover();
+    Check::same('только shef.* с установщиком и версией; local главнее bitrix', array_map(static fn (string $d): string => substr($d, strlen($portal)), $found), [
+        'shef.currency' => '/local/modules/shef.currency', 'shef.options' => '/bitrix/modules/shef.options', 'shef.problems' => '/bitrix/modules/shef.problems',
+    ]);
+    ModuleManager::$installed = ['shef.options' => true, 'currency' => true];
+    Option::set('shef.options', 'SYS_sync_shef.options', '3.2.0');
+    $states = $sync->states($found);
+    Check::same('состояние: версия файлов, зависимости, установлен, синхронизирован', $states[0], ['id' => 'shef.currency', 'version' => '2.1.0', 'requires' => ['shef.options', 'currency'], 'installed' => false, 'synced' => '']);
+    Check::same('модули ядра, нужные линейке, — установлены ли', Sync::installedOutside($states, [ModuleManager::class, 'isModuleInstalled']), ['shef.options', 'currency']);
+    Check::same('план по диску', $actions(Planner::plan($states, Sync::installedOutside($states, [ModuleManager::class, 'isModuleInstalled']))), ['shef.options:skip', 'shef.problems:install', 'shef.currency:install']);
+
+    Check::group('Sync: обновление установщиком');
+
+    $make('bitrix/modules', 'shef.upd', '1.1.0', [], "<?php\nclass shef_upd { public static array \$calls = []; public function InstallFiles(): bool { static::\$calls[] = 'files'; return true; } public function installModuleData(): bool { static::\$calls[] = 'data'; return true; } public function InstallDB(): bool { static::\$calls[] = 'db'; return true; } }\n");
+    $make('bitrix/modules', 'shef.nofiles', '1.0.0', [], "<?php\nclass shef_nofiles {}\n");
+    Check::same('файлы и данные — да, InstallDB — нет (регистрацию не трогаем)', [Sync::update('shef.upd', "$portal/bitrix/modules/shef.upd"), \shef_upd::$calls], [['файлы', 'данные'], ['files', 'data']]);
+    Check::same('у установщика нечего звать — пусто, без ошибки', Sync::update('shef.nofiles', "$portal/bitrix/modules/shef.nofiles"), []);
+    Sync::markSynced('shef.upd', '1.1.0');
+    Check::same('синхронизированная версия — в настройках shef.options', Option::get('shef.options', 'SYS_sync_shef.upd', ''), '1.1.0');
+
+    exec('rm -rf '.escapeshellarg($portal));
+
+    Check::finish();
+}

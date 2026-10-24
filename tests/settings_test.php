@@ -113,4 +113,21 @@ foreach ($namespaces as $namespace => $prefix) {
 
 Check::same('каждый namespace контроллеров существует', $brokenNamespace, []);
 
+Check::group('console — команды bitrix.php (issue #53)');
+
+$commands = $settings['console']['value']['commands'] ?? [];
+Check::same('команды синхронизации модулей зарегистрированы', $commands, [
+    'Shef\\Options\\Cli\\Command\\Modules\\SyncCommand',
+    'Shef\\Options\\Cli\\Command\\Modules\\InstallOneCommand',
+]);
+$missing = [];
+foreach ($commands as $class) {
+    $path = $root.'/lib/'.strtolower(str_replace('\\', '/', substr($class, strlen('Shef\\Options\\')))).'.php';
+    $src = is_file($path) ? (string)file_get_contents($path) : '';
+    if (!str_contains($src, 'class '.substr(strrchr($class, '\\'), 1).' extends Command')) {
+        $missing[] = $class;
+    }
+}
+Check::same('каждая — класс Symfony Command там, где его ищет автозагрузка', $missing, []);
+
 Check::finish();
