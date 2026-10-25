@@ -43,14 +43,15 @@ class Constants
      * а intval('5 62') даёт 5 — работа от имени пользователя, которого никто
      * не выбирал. Поэтому разбираем строго: целое больше нуля либо строка из
      * одних цифр без ведущего нуля. Всё остальное считаем незаполненным и
-     * берём умолчание — ровно то же, что вернулось бы для несохранённой опции.
+     * берём умолчание — ровно то же, что вернулось бы для несохранённой опции, —
+     * и пишем предупреждение в журнал событий (warnDefaultSystemUser()).
      */
     public static function getSystemUserId(): int
     {
         $value = Config\Option::get(
             static::MODULE_ID,
             'DEF_systemuserid',
-            (string) static::DEFAULT_SYSTEM_USER_ID
+            ''
         );
 
         if (is_int($value)) {
@@ -61,7 +62,52 @@ class Constants
             return (int) $value;
         }
 
+        static::warnDefaultSystemUser();
+
         return static::DEFAULT_SYSTEM_USER_ID;
+    }
+
+    /** Опция с датой последнего предупреждения (Y-m-d). */
+    public const SYSTEM_USER_WARNED_OPTION = 'SYS_systemuser_warned';
+
+    /** Предупреждение уже записано в этом процессе. */
+    protected static bool $systemUserWarned = false;
+
+    /**
+     * Служебный пользователь не выбран или заполнен мусором — модули работают
+     * от DEFAULT_SYSTEM_USER_ID, обычно администратора. Поведение то же, но не
+     * молча: предупреждение в журнал событий, раз в сутки (решение владельца,
+     * #48). Сбой записи наружу не выходит — без журнала хуже, чем без ID.
+     */
+    protected static function warnDefaultSystemUser(): void
+    {
+        if (static::$systemUserWarned) {
+            return;
+        }
+        static::$systemUserWarned = true;
+
+        try {
+            $today = date('Y-m-d');
+            if (Config\Option::get(static::MODULE_ID, static::SYSTEM_USER_WARNED_OPTION, '') === $today) {
+                return;
+            }
+            Config\Option::set(static::MODULE_ID, static::SYSTEM_USER_WARNED_OPTION, $today);
+
+            static::writeWarning(
+                'Служебный пользователь в настройках shef.options не выбран или заполнен неверно — '
+                .'модули линейки работают от пользователя с ID '.static::DEFAULT_SYSTEM_USER_ID
+                .'. Выберите служебного пользователя: Настройки → Модули → shef.options.'
+            );
+        } catch (\Throwable) {
+        }
+    }
+
+    /** Запись в журнал событий; переопределяется в тестах. */
+    protected static function writeWarning(string $text): void
+    {
+        if (class_exists(\CEventLog::class)) {
+            \CEventLog::Log('WARNING', 'SHEF_OPTIONS_SYSTEM_USER', static::MODULE_ID, 'DEF_systemuserid', $text);
+        }
     }
     // endregion ////
 
