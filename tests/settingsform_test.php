@@ -140,7 +140,7 @@ Check::same('название — без тегов и без «?»', $faqField[
 Check::same('ссылка — значком, только href, без onclick', [str_contains($faqField['hintIcon'], 'href="/shef/x/faq/#faq-P"'), str_contains($faqField['hintIcon'], 'onclick'), str_contains($faqField['hintIcon'], 'title=')], [true, false, false]);
 Check::same('без ссылки в названии — значка нет', SettingsForm::fromTabs([$tab], static fn (string $c): string => '')[0]['fields'][1]['hintIcon'], '');
 
-Check::group('supports(): все поля вкладок форма умеет (3.1.0)');
+Check::group('supports(): все поля вкладок форма умеет (3.6.0)');
 Check::same('вкладка из поддержанных полей — карточки', SettingsForm::supports([$tab]), true);
 $people = new Options\Department('PEOPLE');
 Check::same('есть поле, которого форма не умеет (Department), — прежние вкладки', SettingsForm::supports([(new Options\Tab('X'))->setName('X')->addOption($people)]), false);

@@ -65,5 +65,16 @@ return [
             'namespaces' => [],
         ],
         'readonly' => true,
-    ]
+    ],
+    // Команды php bitrix/bitrix.php (framework-docs: framework/console-commands.md): установка и
+    // обновление модулей линейки после выкладки файлов (issue #53)
+    'console' => [
+        'value' => [
+            'commands' => [
+                \Shef\Options\Cli\Command\Modules\SyncCommand::class,
+                \Shef\Options\Cli\Command\Modules\InstallOneCommand::class,
+            ],
+        ],
+        'readonly' => true,
+    ],
 ];

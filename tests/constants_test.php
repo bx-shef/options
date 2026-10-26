@@ -60,6 +60,70 @@ Check::same('массив', $withOption([562]), Constants::DEFAULT_SYSTEM_USER_I
 Check::same('истина', $withOption(true), Constants::DEFAULT_SYSTEM_USER_ID);
 Check::same('null', $withOption(null), Constants::DEFAULT_SYSTEM_USER_ID);
 
+Check::group('умолчание — с предупреждением в журнал, раз в сутки (#48)');
+
+/** Записи «журнала» вместо CEventLog. */
+final class WarnConstants extends Constants
+{
+    /** @var list<string> */
+    public static array $log = [];
+
+    public static function reset(): void
+    {
+        static::$systemUserWarned = false;
+        static::$log = [];
+    }
+
+    protected static function writeWarning(string $text): void
+    {
+        static::$log[] = $text;
+    }
+}
+
+$warned = static function (mixed $value, bool $keepDate = false): int {
+    WarnConstants::reset();
+    if (!$keepDate) {
+        Option::forget(Constants::MODULE_ID, Constants::SYSTEM_USER_WARNED_OPTION);
+    }
+    if ($value === null) {
+        Option::forget(Constants::MODULE_ID, 'DEF_systemuserid');
+    } else {
+        Option::set(Constants::MODULE_ID, 'DEF_systemuserid', $value);
+    }
+    WarnConstants::getSystemUserId();
+    WarnConstants::getSystemUserId();
+    Option::forget(Constants::MODULE_ID, 'DEF_systemuserid');
+
+    return count(WarnConstants::$log);
+};
+
+Check::same('опции нет — одно предупреждение на процесс', $warned(null), 1);
+Check::same('мусор — предупреждение', $warned('5 62'), 1);
+Check::same('выбран 562 — молча', $warned('562'), 0);
+Check::same('выбран явно 1 — молча', $warned('1'), 0);
+$warned(null);
+Check::same('дата записана сегодняшняя', Option::get(Constants::MODULE_ID, Constants::SYSTEM_USER_WARNED_OPTION), date('Y-m-d'));
+Check::same('сегодня уже писали — молча', $warned(null, true), 0);
+Option::set(Constants::MODULE_ID, Constants::SYSTEM_USER_WARNED_OPTION, '2000-01-01');
+Check::same('вчерашняя дата — снова пишем', $warned(null, true), 1);
+WarnConstants::reset();
+Option::forget(Constants::MODULE_ID, 'DEF_systemuserid');
+Option::forget(Constants::MODULE_ID, Constants::SYSTEM_USER_WARNED_OPTION);
+WarnConstants::getSystemUserId();
+Check::same('текст называет ID и где выбрать', str_contains(WarnConstants::$log[0] ?? '', 'ID 1') && str_contains(WarnConstants::$log[0] ?? '', 'shef.options'), true);
+
+/** Журнал упал — ID всё равно отдаётся. */
+final class BrokenLogConstants extends Constants
+{
+    protected static function writeWarning(string $text): void
+    {
+        throw new \RuntimeException('журнал недоступен');
+    }
+}
+Option::forget(Constants::MODULE_ID, Constants::SYSTEM_USER_WARNED_OPTION);
+Check::same('сбой журнала не мешает', BrokenLogConstants::getSystemUserId(), Constants::DEFAULT_SYSTEM_USER_ID);
+Option::forget(Constants::MODULE_ID, Constants::SYSTEM_USER_WARNED_OPTION);
+
 Check::group('публичные пути');
 
 Check::same('css через точку', Constants::getPublicCssDir(), '/bitrix/css/shef.options');
