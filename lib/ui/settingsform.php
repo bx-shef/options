@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Shef\Options\Ui;
 
 /**
- * Форма настроек «как у Битрикс24» (shef.options 3.1.0; родом из shef.toolsai
+ * Форма настроек «как у Битрикс24» (shef.options 3.6.0; родом из shef.toolsai
  * 1.20.0–1.64.5, перенос — bx-shef/toolsai#96): описание полей для JS-страницы. С 1.64.0 вид — как «Настройки BitrixGPT» CRM
  * (crm/install/js/crm/ai/settings-slider): карточка на вкладку, строки
  * «подпись — поле» на штатных ui-ctl и ui.switcher.

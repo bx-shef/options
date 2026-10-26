@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Форма настроек в виде «Настроек BitrixGPT» (3.1.0, перенос из shef.toolsai, bx-shef/toolsai#96) — Ui\SettingsForm, без ядра.
+ * Форма настроек в виде «Настроек BitrixGPT» (3.6.0, перенос из shef.toolsai, bx-shef/toolsai#96) — Ui\SettingsForm, без ядра.
  *
  * Что держит:
  *
