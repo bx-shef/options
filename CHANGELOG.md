@@ -1,5 +1,8 @@
 # change log
 
+## 3.7.0 — 2026-10-26
+* `_log()` (и трейт `TraitList\Log`, `Integration\AEvents`, `Integration\IBlock\AEntity`) пишет **вне корня сайта** (#47): замер на стенде — файл в `<DOCUMENT_ROOT>/local/log` отдавался браузеру. Каталог — `shef_options_log_dir()`: константа `SHEF_OPTIONS_LOG_DIR` (проект может вернуть старый путь), каталог логов shef.problems (`Constants::getLogDir()`: его `_log()` и так пишет туда — теперь обе копии в одно место), `BX_TEMPORARY_FILES_DIRECTORY/sh_log`, `<родитель корня сайта>/sh_log` (BitrixVM — `/home/bitrix/sh_log`, как у shef.problems), иначе прежний `/local/log` с `.htaccess` «закрыто» (nginx его не читает — закрыть в конфигурации)
+
 ## 3.6.0 — 2026-10-26
 * Страница настроек модуля (options.php) — в виде «Настроек BitrixGPT» Битрикс24: вкладка — белая карточка со шапкой и «Свернуть», настройка — строка «название — поле», переключатели вместо галочек, кнопки «Отмена / Сохранить» внизу. Форма — Ui\SettingsForm (перенос из shef.toolsai, bx-shef/toolsai#96): поля штатные (ui-ctl, ui.switcher), имена прежние (param_<ВКЛАДКА>_<код>)
 * Карточки — только если форма умеет все поля страницы (Checkbox, Text, NumberInt, NumberFloat, TextArea, Enum*, RowInfo; SettingsForm::supports()). Есть поле другого вида (Department, Users…) — страница прежняя, со вкладками: такое поле не пропадёт

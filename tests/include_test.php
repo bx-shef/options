@@ -98,12 +98,13 @@ Check::group('_log() пишет и дописывает');
 // есть типы параметров. Запись это не сторожило — убери в _log() флаг APPEND,
 // и каждый вызов затирал бы предыдущий, а все тесты остались бы зелёными.
 //
-// Пишется в DOCUMENT_ROOT/local/log, поэтому корень на время проверки
-// подменяется временным каталогом. Каталога local/log в нём нет намеренно:
-// его создаёт сам вызов, как это делает ядро на чистом портале.
+// С 3.7.0 (#47) пишется вне корня сайта — рядом с ним (shef_options_log_dir()), поэтому
+// корень на время проверки подменяется временным <sandbox>/www, а лог ждём в <sandbox>/sh_log.
+// Каталога sh_log нет намеренно: его создаёт сам вызов, как это делает ядро на чистом портале.
 $documentRoot = $_SERVER['DOCUMENT_ROOT'] ?? '';
 $sandbox = sys_get_temp_dir().'/shef-options-log-'.getmypid();
-$logFile = $sandbox.'/local/log/probe_'.date('dmY').'.log';
+$logFile = $sandbox.'/sh_log/probe_'.date('dmY').'.log';
+@mkdir($sandbox.'/www', 0777, true);
 
 // Уборка вешается на завершение процесса, а не пишется в конце группы: этот
 // тест существует ради падения, а падение до конца группы не доходит и
@@ -111,16 +112,16 @@ $logFile = $sandbox.'/local/log/probe_'.date('dmY').'.log';
 register_shutdown_function(static function () use ($sandbox, $documentRoot): void {
     $_SERVER['DOCUMENT_ROOT'] = $documentRoot;
 
-    array_map('unlink', glob($sandbox.'/local/log/*') ?: []);
+    array_map('unlink', glob($sandbox.'/sh_log/*') ?: []);
 
-    foreach ([$sandbox.'/local/log', $sandbox.'/local', $sandbox] as $dir) {
+    foreach ([$sandbox.'/sh_log', $sandbox.'/www', $sandbox] as $dir) {
         is_dir($dir) && rmdir($dir);
     }
 });
 
-array_map('unlink', glob($sandbox.'/local/log/*') ?: []);
+array_map('unlink', glob($sandbox.'/sh_log/*') ?: []);
 
-$_SERVER['DOCUMENT_ROOT'] = $sandbox;
+$_SERVER['DOCUMENT_ROOT'] = $sandbox.'/www';
 
 _log(['первый' => 1], 'probe');
 _log(['второй' => 2], 'probe');

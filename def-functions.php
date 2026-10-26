@@ -47,12 +47,50 @@ if (!function_exists('_pr')) {
     }
 }
 
+if (!function_exists('shef_options_log_dir')) {
+    /**
+     * Каталог логов _log() (3.7.0, #47): вне корня сайта — лог с данными портала не открыть из браузера.
+     * По порядку: константа SHEF_OPTIONS_LOG_DIR (проект может вернуть старый путь); каталог логов
+     * shef.problems (Constants::getLogDir(), его _log() пишет туда же — обе копии в одно место);
+     * BX_TEMPORARY_FILES_DIRECTORY/sh_log; каталог рядом с корнем сайта (<родитель DOCUMENT_ROOT>/sh_log,
+     * на BitrixVM — /home/bitrix/sh_log, как у shef.problems), если туда можно писать;
+     * иначе прежний <DOCUMENT_ROOT>/local/log с .htaccess «закрыто» (apache; nginx его не читает —
+     * тогда закрыть /local/log в конфигурации сервера).
+     */
+    function shef_options_log_dir(?string $documentRoot = null): string
+    {
+        $root = rtrim((string)($documentRoot ?? ($_SERVER['DOCUMENT_ROOT'] ?? '')), '/');
+        if (defined('SHEF_OPTIONS_LOG_DIR') && (string)SHEF_OPTIONS_LOG_DIR !== '') {
+            return rtrim((string)SHEF_OPTIONS_LOG_DIR, '/');
+        }
+        if ($documentRoot === null && class_exists(\Shef\Problems\Main\Constants::class) && method_exists(\Shef\Problems\Main\Constants::class, 'getLogDir')) {
+            return rtrim(\Shef\Problems\Main\Constants::getLogDir(), '/');
+        }
+        if (defined('BX_TEMPORARY_FILES_DIRECTORY') && (string)BX_TEMPORARY_FILES_DIRECTORY !== '') {
+            return rtrim((string)BX_TEMPORARY_FILES_DIRECTORY, '/').'/sh_log';
+        }
+        $parent = $root !== '' ? dirname($root) : '';
+        if ($parent !== '' && $parent !== $root && $parent !== '/' && (is_dir($parent.'/sh_log') ? is_writable($parent.'/sh_log') : is_writable($parent))) {
+            return $parent.'/sh_log';
+        }
+        $old = $root.'/local/log';
+        if (!is_file($old.'/.htaccess')) {
+            @mkdir($old, defined('BX_DIR_PERMISSIONS') ? BX_DIR_PERMISSIONS : 0755, true);
+            @file_put_contents($old.'/.htaccess', "Require all denied
+Deny from all
+");
+        }
+
+        return $old;
+    }
+}
+
 if (!function_exists('_log')) {
     function _log(array $value = [], string $fileName = 'log'): void
     {
         $e = new \Exception();
         \Bitrix\Main\IO\File::putFileContents(
-            $_SERVER["DOCUMENT_ROOT"]."/local/log/".$fileName."_".date('dmY').".log",
+            shef_options_log_dir()."/".$fileName."_".date('dmY').".log",
             implode("\n", [
                 '',
                 ' >>> '.date('d.m.Y H:i:s').' >>>',
