@@ -50,9 +50,10 @@ if (!function_exists('_pr')) {
 if (!function_exists('shef_options_log_dir')) {
     /**
      * Каталог логов _log() (3.7.0, #47): вне корня сайта — лог с данными портала не открыть из браузера.
-     * По порядку: константа SHEF_OPTIONS_LOG_DIR (проект может вернуть старый путь); штатный
-     * временный каталог Битрикса BX_TEMPORARY_FILES_DIRECTORY/shef-log; каталог рядом с корнем сайта
-     * (<родитель DOCUMENT_ROOT>/shef-log, на BitrixVM — /home/bitrix/shef-log), если туда можно писать;
+     * По порядку: константа SHEF_OPTIONS_LOG_DIR (проект может вернуть старый путь); каталог логов
+     * shef.problems (Constants::getLogDir(), его _log() пишет туда же — обе копии в одно место);
+     * BX_TEMPORARY_FILES_DIRECTORY/sh_log; каталог рядом с корнем сайта (<родитель DOCUMENT_ROOT>/sh_log,
+     * на BitrixVM — /home/bitrix/sh_log, как у shef.problems), если туда можно писать;
      * иначе прежний <DOCUMENT_ROOT>/local/log с .htaccess «закрыто» (apache; nginx его не читает —
      * тогда закрыть /local/log в конфигурации сервера).
      */
@@ -62,12 +63,15 @@ if (!function_exists('shef_options_log_dir')) {
         if (defined('SHEF_OPTIONS_LOG_DIR') && (string)SHEF_OPTIONS_LOG_DIR !== '') {
             return rtrim((string)SHEF_OPTIONS_LOG_DIR, '/');
         }
+        if ($documentRoot === null && class_exists(\Shef\Problems\Main\Constants::class) && method_exists(\Shef\Problems\Main\Constants::class, 'getLogDir')) {
+            return rtrim(\Shef\Problems\Main\Constants::getLogDir(), '/');
+        }
         if (defined('BX_TEMPORARY_FILES_DIRECTORY') && (string)BX_TEMPORARY_FILES_DIRECTORY !== '') {
-            return rtrim((string)BX_TEMPORARY_FILES_DIRECTORY, '/').'/shef-log';
+            return rtrim((string)BX_TEMPORARY_FILES_DIRECTORY, '/').'/sh_log';
         }
         $parent = $root !== '' ? dirname($root) : '';
-        if ($parent !== '' && $parent !== $root && $parent !== '/' && (is_dir($parent.'/shef-log') ? is_writable($parent.'/shef-log') : is_writable($parent))) {
-            return $parent.'/shef-log';
+        if ($parent !== '' && $parent !== $root && $parent !== '/' && (is_dir($parent.'/sh_log') ? is_writable($parent.'/sh_log') : is_writable($parent))) {
+            return $parent.'/sh_log';
         }
         $old = $root.'/local/log';
         if (!is_file($old.'/.htaccess')) {

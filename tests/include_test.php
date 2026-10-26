@@ -99,11 +99,11 @@ Check::group('_log() пишет и дописывает');
 // и каждый вызов затирал бы предыдущий, а все тесты остались бы зелёными.
 //
 // С 3.7.0 (#47) пишется вне корня сайта — рядом с ним (shef_options_log_dir()), поэтому
-// корень на время проверки подменяется временным <sandbox>/www, а лог ждём в <sandbox>/shef-log.
-// Каталога shef-log нет намеренно: его создаёт сам вызов, как это делает ядро на чистом портале.
+// корень на время проверки подменяется временным <sandbox>/www, а лог ждём в <sandbox>/sh_log.
+// Каталога sh_log нет намеренно: его создаёт сам вызов, как это делает ядро на чистом портале.
 $documentRoot = $_SERVER['DOCUMENT_ROOT'] ?? '';
 $sandbox = sys_get_temp_dir().'/shef-options-log-'.getmypid();
-$logFile = $sandbox.'/shef-log/probe_'.date('dmY').'.log';
+$logFile = $sandbox.'/sh_log/probe_'.date('dmY').'.log';
 @mkdir($sandbox.'/www', 0777, true);
 
 // Уборка вешается на завершение процесса, а не пишется в конце группы: этот
@@ -112,14 +112,14 @@ $logFile = $sandbox.'/shef-log/probe_'.date('dmY').'.log';
 register_shutdown_function(static function () use ($sandbox, $documentRoot): void {
     $_SERVER['DOCUMENT_ROOT'] = $documentRoot;
 
-    array_map('unlink', glob($sandbox.'/shef-log/*') ?: []);
+    array_map('unlink', glob($sandbox.'/sh_log/*') ?: []);
 
-    foreach ([$sandbox.'/shef-log', $sandbox.'/www', $sandbox] as $dir) {
+    foreach ([$sandbox.'/sh_log', $sandbox.'/www', $sandbox] as $dir) {
         is_dir($dir) && rmdir($dir);
     }
 });
 
-array_map('unlink', glob($sandbox.'/shef-log/*') ?: []);
+array_map('unlink', glob($sandbox.'/sh_log/*') ?: []);
 
 $_SERVER['DOCUMENT_ROOT'] = $sandbox.'/www';
 

@@ -20,12 +20,12 @@ $tmp = sys_get_temp_dir().'/shef-logdir-'.getmypid();
 $root = $tmp.'/home/www';
 
 Check::group('без констант');
-Check::same('рядом с корнем сайта, не внутри', shef_options_log_dir($root), $tmp.'/home/shef-log');
+Check::same('рядом с корнем сайта, не внутри', shef_options_log_dir($root), $tmp.'/home/sh_log');
 Check::same('путь не начинается с корня сайта', str_starts_with(shef_options_log_dir($root), $root.'/'), false);
 
 Check::group('BX_TEMPORARY_FILES_DIRECTORY');
 define('BX_TEMPORARY_FILES_DIRECTORY', $tmp.'/bxtemp/');
-Check::same('штатный временный каталог Битрикса', shef_options_log_dir($root), $tmp.'/bxtemp/shef-log');
+Check::same('штатный временный каталог Битрикса', shef_options_log_dir($root), $tmp.'/bxtemp/sh_log');
 
 Check::group('SHEF_OPTIONS_LOG_DIR');
 define('SHEF_OPTIONS_LOG_DIR', $root.'/local/log/');
@@ -33,6 +33,7 @@ Check::same('константа проекта главнее — можно в�
 
 Check::group('_log пишет туда же');
 $src = (string)file_get_contents(dirname(__DIR__).'/def-functions.php');
+Check::same('при shef.problems — его каталог логов (обе копии _log() в одно место)', str_contains($src, '\Shef\Problems\Main\Constants::getLogDir()'), true);
 Check::same('_log() берёт каталог из shef_options_log_dir(), не из DOCUMENT_ROOT/local/log', [str_contains($src, 'shef_options_log_dir()."/".$fileName'), str_contains($src, '$_SERVER["DOCUMENT_ROOT"]."/local/log/"')], [true, false]);
 
 exec('rm -rf '.escapeshellarg($tmp));
