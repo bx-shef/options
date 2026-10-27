@@ -2,7 +2,6 @@
 
 /**
  * @global string $Update
- * @global string $RestoreDefaults
  * @global string $mid
  */
 
@@ -100,14 +99,12 @@ try {
     }
 
     if (
-        $request->isPost() && $Update.$RestoreDefaults <> '' && check_bitrix_sessid()
+        $request->isPost() && $Update <> '' && check_bitrix_sessid()
     ) {
         if ($modulePerms < 'W') {
             CAdminMessage::ShowMessage('Wrong right for save');
         } else {
-            if ($RestoreDefaults <> '') {
-                Config\Option::delete($mid);
-            } elseif (class_exists(SettingsForm::class) && (string)$request->getPost(SettingsForm::RENDERED) === 'Y') {
+            if (class_exists(SettingsForm::class) && (string)$request->getPost(SettingsForm::RENDERED) === 'Y') {
                 // Карточки (3.6.0): только пришедшие поля — форма без JS ничего не затирает
                 $cardTabs = array_filter($tabs, static fn ($tab): bool => $tab instanceof Options\Tab);
                 foreach (SettingsForm::collect($cardTabs, $request->getPostList()->toArray()) as $complexCode => $value) {
@@ -197,8 +194,6 @@ if (class_exists(SettingsForm::class) && SettingsForm::supports($cardTabs)) {
     <div class="shef-opt-buttons">
         <a href="<?=htmlspecialcharsbx($formAction)?>" class="ui-btn ui-btn-lg ui-btn-no-caps --air --style-plain"><?=Loc::getMessage('MAIN_RESET')?></a>
         <button type="submit" name="Update" value="Y" class="ui-btn ui-btn-lg ui-btn-no-caps --air --style-filled"<?=$readOnly?>><?=GetMessage('MAIN_SAVE')?></button>
-        <button type="submit" name="RestoreDefaults" value="Y" class="ui-btn ui-btn-sm ui-btn-no-caps --air --style-plain-no-accent"<?=$readOnly?>
-            onclick="return confirm('<?=AddSlashes(GetMessage('MAIN_HINT_RESTORE_DEFAULTS_WARNING'))?>')"><?=GetMessage('MAIN_RESTORE_DEFAULTS')?></button>
     </div>
 </form>
 <script><?=SettingsForm::script()?></script>
@@ -242,13 +237,6 @@ $tabControl->Buttons();?>
             type="reset"
             name="reset"
             value="<?=Loc::getMessage('MAIN_RESET');?>"
-        >
-        <input type="submit"
-            name="RestoreDefaults"
-            <?= $modulePerms < 'W' ? 'disabled' : '' ?>
-            title="<?=GetMessage('MAIN_HINT_RESTORE_DEFAULTS')?>"
-            onclick="return confirm('<?=AddSlashes(GetMessage('MAIN_HINT_RESTORE_DEFAULTS_WARNING'))?>')"
-            value="<?=GetMessage('MAIN_RESTORE_DEFAULTS')?>"
         >
         <?=bitrix_sessid_post();?>
     <?php $tabControl->End();?>

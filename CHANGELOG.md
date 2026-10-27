@@ -1,5 +1,8 @@
 # change log
 
+## 3.7.1 — 2026-10-27
+* options.php (канон для копий в модулях линейки): кнопка «Вернуть значения по умолчанию» убрана со страницы настроек модуля вместе с обработкой `RestoreDefaults` (решение владельца, 2026-10-27): одно нажатие стирало все настройки модуля без возврата. Замены нет
+
 ## 3.7.0 — 2026-10-26
 * `_log()` (и трейт `TraitList\Log`, `Integration\AEvents`, `Integration\IBlock\AEntity`) пишет **вне корня сайта** (#47): замер на стенде — файл в `<DOCUMENT_ROOT>/local/log` отдавался браузеру. Каталог — `shef_options_log_dir()`: константа `SHEF_OPTIONS_LOG_DIR` (проект может вернуть старый путь), каталог логов shef.problems (`Constants::getLogDir()`: его `_log()` и так пишет туда — теперь обе копии в одно место), `BX_TEMPORARY_FILES_DIRECTORY/sh_log`, `<родитель корня сайта>/sh_log` (BitrixVM — `/home/bitrix/sh_log`, как у shef.problems), иначе прежний `/local/log` с `.htaccess` «закрыто» (nginx его не читает — закрыть в конфигурации)
 
