@@ -88,10 +88,91 @@ class Sync
     }
 
     /**
+     * Требования установщика к модулям портала: NEED_MODULES (версия '') и NEED_MODULES_BY_VERSION —
+     * значения свойств класса по умолчанию, без конструктора. Нет класса или свойств — пусто: такой
+     * модуль проверяет только его установщик. Файл установщика подключается в процессе команды (как
+     * при обновлении): канонический установщик — только объявление класса; фатальная ошибка в нём
+     * остановит и план.
+     *
+     * @return array<string, string> модуль => наименьшая версия
+     */
+    public static function needs(string $id, string $moduleDir): array
+    {
+        try {
+            $class = str_replace('.', '_', $id);
+            if (!class_exists($class, false)) {
+                require_once $moduleDir.'/install/index.php';
+            }
+            if (!class_exists($class, false)) {
+                return [];
+            }
+            $props = (new \ReflectionClass($class))->getDefaultProperties();
+        } catch (\Throwable) {
+            return [];
+        }
+        $needs = [];
+        foreach (is_array($props['NEED_MODULES'] ?? null) ? $props['NEED_MODULES'] : [] as $dep) {
+            if (is_string($dep) && $dep !== '') {
+                $needs[$dep] = '';
+            }
+        }
+        foreach (is_array($props['NEED_MODULES_BY_VERSION'] ?? null) ? $props['NEED_MODULES_BY_VERSION'] : [] as $dep => $ver) {
+            if (is_string($dep) && $dep !== '' && is_string($ver)) {
+                $needs[$dep] = $ver;
+            }
+        }
+
+        return $needs;
+    }
+
+    /**
+     * Версии модулей портала вне списка, которые нужны линейке по needs. Не установлен — нет ключа,
+     * установлен без читаемой версии — ''.
+     *
+     * @param list<array{id: string, needs?: array<string, string>}> $states
+     * @param callable(string): (string|false) $getVersion false — не установлен
+     * @return array<string, string>
+     */
+    public static function outsideVersions(array $states, callable $getVersion): array
+    {
+        $own = array_column($states, 'id', 'id');
+        $versions = [];
+        foreach ($states as $s) {
+            foreach (array_keys($s['needs'] ?? []) as $dep) {
+                $dep = (string)$dep;
+                if (!isset($own[$dep]) && !array_key_exists($dep, $versions)) {
+                    $v = $getVersion($dep);
+                    if ($v !== false) {
+                        $versions[$dep] = (string)$v;
+                    }
+                }
+            }
+        }
+
+        return $versions;
+    }
+
+    /**
+     * План команды по состоянию: зависимости ядра (установлены ли) и версии модулей портала.
+     *
+     * @param list<array{id: string, version: string, requires: list<string>, installed: bool, synced: string, needs?: array<string, string>}> $states
+     * @param list<string>|null $only
+     * @param callable(string): bool $isInstalled
+     * @param callable(string): (string|false) $getVersion
+     * @return list<array{id: string, action: string, reason: string, version: string}>
+     */
+    public static function plan(array $states, ?array $only, callable $isInstalled, callable $getVersion): array
+    {
+        $versions = static::outsideVersions($states, static fn (string $id): string|false => $isInstalled($id) ? $getVersion($id) : false);
+
+        return Planner::plan($states, static::installedOutside($states, $isInstalled), $only, $versions);
+    }
+
+    /**
      * Состояние для Planner.
      *
      * @param array<string, string> $found
-     * @return list<array{id: string, version: string, requires: list<string>, installed: bool, synced: string}>
+     * @return list<array{id: string, version: string, requires: list<string>, installed: bool, synced: string, needs: array<string, string>}>
      */
     public function states(array $found): array
     {
@@ -103,6 +184,7 @@ class Sync
                 'requires' => static::requires($dir),
                 'installed' => ModuleManager::isModuleInstalled($id),
                 'synced' => (string)Option::get(self::OWNER, self::SYNCED_PREFIX.$id, ''),
+                'needs' => static::needs($id, $dir),
             ];
         }
 
