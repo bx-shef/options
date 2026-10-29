@@ -77,6 +77,28 @@ namespace {
     Check::same('цикл — заблокирован', $actions(Planner::plan([$m('a.b', ['c.d']), $m('c.d', ['a.b'])])), ['a.b:blocked', 'c.d:blocked']);
     Check::same('--module: только он и его зависимости, по порядку', $actions(Planner::plan($line, ['ai', 'currency'], ['shef.insync'])), ['shef.options:update', 'shef.problems:install', 'shef.insync:install']);
 
+    Check::group('Planner: версии модулей портала из установщика (NEED_MODULES_BY_VERSION)');
+
+    $n = static fn (string $id, array $needs, bool $inst = false): array
+        => ['id' => $id, 'version' => '1.76.0', 'requires' => ['shef.options'], 'installed' => $inst, 'synced' => '', 'needs' => $needs];
+    $opt = $m('shef.options', [], true, '3.8.0', '3.8.0');
+    $needs = ['shef.options' => '3.0.0', 'ai' => '26.1000.0', 'crm' => '26.800.0'];
+    $plan = Planner::plan([$opt, $n('shef.toolsai', $needs)], ['ai', 'crm'], null, ['ai' => '26.1000.0', 'crm' => '26.700.0']);
+    Check::same('crm ниже — заблокирован, причина с нужной и установленной версией', [$plan[1]['action'], $plan[1]['reason']], [Planner::BLOCKED, 'нужно: crm 26.800.0+ (установлена 26.700.0)']);
+    $plan = Planner::plan([$opt, $n('shef.toolsai', $needs)], ['crm'], null, ['crm' => '26.800.0']);
+    Check::same('ai не установлен — заблокирован', $plan[1]['reason'], 'нужно: ai 26.1000.0+ (не установлен)');
+    $plan = Planner::plan([$opt, $n('shef.toolsai', $needs, true)], ['ai', 'crm'], null, ['ai' => '26.900.0', 'crm' => '26.700.0']);
+    Check::same('установленный на старом ядре — тоже заблокирован (обновление не идёт)', [$plan[1]['action'], $plan[1]['reason']], [Planner::BLOCKED, 'нужно: ai 26.1000.0+ (установлена 26.900.0), crm 26.800.0+ (установлена 26.700.0)']);
+    $plan = Planner::plan([$opt, $n('shef.toolsai', $needs), array_merge($n('shef.toolsaiassistant', ['shef.toolsai' => '1.66.0']), ['requires' => ['shef.toolsai']])], ['ai', 'crm'], null, ['ai' => '26.1000.0', 'crm' => '26.700.0']);
+    Check::same('зависимый от заблокированного — тоже заблокирован', $actions($plan), ['shef.options:skip', 'shef.toolsai:blocked', 'shef.toolsaiassistant:blocked']);
+    $plan = Planner::plan([$opt, $n('shef.toolsai', $needs)], ['ai', 'crm'], null, ['ai' => '26.1000.0', 'crm' => '26.800.0']);
+    Check::same('на границе — ставится', $actions($plan), ['shef.options:skip', 'shef.toolsai:install']);
+    $plan = Planner::plan([$m('shef.options', [], true, '2.9.0', '2.9.0'), $n('shef.toolsai', ['shef.options' => '3.0.0'])]);
+    Check::same('модуль линейки — по версии своих файлов', $plan[1]['reason'], 'нужно: shef.options 3.0.0+ (установлена 2.9.0)');
+    $plan = Planner::plan([$opt, $n('shef.toolsai', ['ai' => ''])], [], null, []);
+    Check::same('NEED_MODULES без версии: нет модуля — заблокирован', $plan[1]['reason'], 'нужно: ai (не установлен)');
+    Check::same('версии портала: только нужные по needs и установленные', Sync::outsideVersions([['needs' => ['ai' => '', 'crm' => '1']], ['needs' => ['crm' => '2', 'im' => '']]], static fn (string $id): string|false => ['ai' => '26.1000.0', 'crm' => '26.700.0'][$id] ?? false), ['ai' => '26.1000.0', 'crm' => '26.700.0']);
+
     Check::group('Sync: модули на диске');
 
     $portal = sys_get_temp_dir().'/shef-sync-'.getmypid();
@@ -102,9 +124,13 @@ namespace {
     ModuleManager::$installed = ['shef.options' => true, 'currency' => true];
     Option::set('shef.options', 'SYS_sync_shef.options', '3.2.0');
     $states = $sync->states($found);
-    Check::same('состояние: версия файлов, зависимости, установлен, синхронизирован', $states[0], ['id' => 'shef.currency', 'version' => '2.1.0', 'requires' => ['shef.options', 'currency'], 'installed' => false, 'synced' => '']);
+    Check::same('состояние: версия файлов, зависимости, установлен, синхронизирован', $states[0], ['id' => 'shef.currency', 'version' => '2.1.0', 'requires' => ['shef.options', 'currency'], 'installed' => false, 'synced' => '', 'needs' => []]);
     Check::same('модули ядра, нужные линейке, — установлены ли', Sync::installedOutside($states, [ModuleManager::class, 'isModuleInstalled']), ['shef.options', 'currency']);
     Check::same('план по диску', $actions(Planner::plan($states, Sync::installedOutside($states, [ModuleManager::class, 'isModuleInstalled']))), ['shef.options:skip', 'shef.problems:install', 'shef.currency:install']);
+
+    $make('bitrix/modules', 'shef.needs', '1.0.0', [], "<?php\nclass shef_needs { public \$NEED_MODULES = ['ai', 'crm']; public \$NEED_MODULES_BY_VERSION = ['shef.options' => '3.0.0', 'crm' => '26.800.0']; public function __construct() { throw new \RuntimeException('конструктор не зовём'); } }\n");
+    Check::same('требования — из свойств установщика, без конструктора', Sync::needs('shef.needs', "$portal/bitrix/modules/shef.needs"), ['ai' => '', 'crm' => '26.800.0', 'shef.options' => '3.0.0']);
+    Check::same('установщик без класса — требований нет', Sync::needs('shef.problems', "$portal/bitrix/modules/shef.problems"), []);
 
     Check::group('Sync: обновление установщиком');
 

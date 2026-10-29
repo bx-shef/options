@@ -88,10 +88,68 @@ class Sync
     }
 
     /**
+     * Требования установщика к модулям портала: NEED_MODULES (версия '') и NEED_MODULES_BY_VERSION —
+     * значения свойств класса по умолчанию, без конструктора. Нет класса или свойств — пусто: такой
+     * модуль проверяет только его установщик.
+     *
+     * @return array<string, string> модуль => наименьшая версия
+     */
+    public static function needs(string $id, string $moduleDir): array
+    {
+        try {
+            $class = str_replace('.', '_', $id);
+            if (!class_exists($class, false)) {
+                require_once $moduleDir.'/install/index.php';
+            }
+            if (!class_exists($class, false)) {
+                return [];
+            }
+            $props = (new \ReflectionClass($class))->getDefaultProperties();
+        } catch (\Throwable) {
+            return [];
+        }
+        $needs = [];
+        foreach (is_array($props['NEED_MODULES'] ?? null) ? $props['NEED_MODULES'] : [] as $dep) {
+            if (is_string($dep) && $dep !== '') {
+                $needs[$dep] = '';
+            }
+        }
+        foreach (is_array($props['NEED_MODULES_BY_VERSION'] ?? null) ? $props['NEED_MODULES_BY_VERSION'] : [] as $dep => $ver) {
+            if (is_string($dep) && $dep !== '' && is_string($ver)) {
+                $needs[$dep] = $ver;
+            }
+        }
+
+        return $needs;
+    }
+
+    /**
+     * Версии модулей портала, которые нужны линейке по needs (не установлен — нет ключа).
+     *
+     * @param list<array{needs?: array<string, string>}> $states
+     * @param callable(string): (string|false) $getVersion
+     * @return array<string, string>
+     */
+    public static function outsideVersions(array $states, callable $getVersion): array
+    {
+        $versions = [];
+        foreach ($states as $s) {
+            foreach (array_keys($s['needs'] ?? []) as $dep) {
+                if (!array_key_exists($dep, $versions)) {
+                    $v = $getVersion((string)$dep);
+                    $versions[$dep] = is_string($v) && $v !== '' ? $v : null;
+                }
+            }
+        }
+
+        return array_filter($versions, static fn (?string $v): bool => $v !== null);
+    }
+
+    /**
      * Состояние для Planner.
      *
      * @param array<string, string> $found
-     * @return list<array{id: string, version: string, requires: list<string>, installed: bool, synced: string}>
+     * @return list<array{id: string, version: string, requires: list<string>, installed: bool, synced: string, needs: array<string, string>}>
      */
     public function states(array $found): array
     {
@@ -103,6 +161,7 @@ class Sync
                 'requires' => static::requires($dir),
                 'installed' => ModuleManager::isModuleInstalled($id),
                 'synced' => (string)Option::get(self::OWNER, self::SYNCED_PREFIX.$id, ''),
+                'needs' => static::needs($id, $dir),
             ];
         }
 

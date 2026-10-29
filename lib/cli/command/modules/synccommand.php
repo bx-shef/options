@@ -55,7 +55,8 @@ class SyncCommand extends Command
         $found = $sync->discover();
         $states = $sync->states($found);
         $only = $input->getOption('module') ? array_values(array_filter(array_map('trim', explode(',', (string)$input->getOption('module'))))) : null;
-        $plan = Planner::plan($states, Sync::installedOutside($states, [ModuleManager::class, 'isModuleInstalled']), $only);
+        $versions = Sync::outsideVersions($states, static fn (string $id): string|false => ModuleManager::isModuleInstalled($id) ? (string)ModuleManager::getVersion($id) : false);
+        $plan = Planner::plan($states, Sync::installedOutside($states, [ModuleManager::class, 'isModuleInstalled']), $only, $versions);
         if ($plan === []) {
             $output->writeln('Модулей shef.* не найдено.');
             return Command::SUCCESS;
