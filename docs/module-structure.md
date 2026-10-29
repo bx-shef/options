@@ -31,13 +31,17 @@ Composer разворачивает в целевой каталог **коре�
 | `install/index.php` | SHIP | установщик, класс `shef_options extends CModule` |
 | `install/version.php` | SHIP | `VERSION` и `VERSION_DATE` — источник истины о версии |
 | `install/css/` | SHIP | стили страницы настроек; установщик раскладывает их в `/bitrix/css` |
-| `.settings.php` | SHIP | настройки модуля: ajax-контроллеры, карта раскладки `installDir` |
+| `install/layout.php` | SHIP | раскладка модуля вне его каталога (то же, что `installDir`) — читает `tools/layout.php` без ядра |
+| `.settings.php` | SHIP | настройки модуля: карта раскладки `installDir`, консольные команды (`console`); список ajax-контроллеров пуст |
+| `default_option.php` | SHIP | значения опций по умолчанию |
+| `register-js.php` | SHIP | регистрирует расширение `shef-options-admin` (один css); подключается из `include.php` |
 | `include.php` | SHIP | точка входа модуля: подключает `autoload.php`, `def-functions.php` и `register-js.php` |
 | `def-functions.php` | SHIP | глобальные `_log()` и `_pr()`, которые зовёт трейт `TraitList\Log` |
 | `autoload.php` | SHIP | зависимости модуля и регистрация чужих namespace |
 | `project-context.php` | SHIP | знает, есть ли на проекте Composer и где его `vendor` |
 | `options.php`, `options_conf.php`, `optionsconfig.php` | SHIP | страница настроек модуля |
-| `lib/` | SHIP | классы модуля, **имена файлов строго строчными** |
+| `lib/` | SHIP | классы модуля, **имена файлов строго строчными**; ключевые узлы — ниже |
+| `tools/layout.php` | SHIP | CLI без ядра: собирает `install/layout.php` модулей `shef.*` и сверяет или пишет (`--write`) их файлы в дереве портала |
 | `lang/ru/` | SHIP | языковые файлы, зеркалят структуру `lib/` |
 | `README.md`, `CHANGELOG.md`, `LICENSE` | SHIP | |
 | `composer.json` | SHIP | манифест пакета |
@@ -58,12 +62,25 @@ Composer разворачивает в целевой каталог **коре�
 Документация живёт в репозитории целиком. В поставке из неё остаётся только
 `README.md` — как readme пакета, — и все ссылки из него ведут на GitHub.
 
-Раньше модуль рендерил `README.md` прямо в настройках: отдельная вкладка,
-ajax-контроллер, вендорённый php-markdown и js-расширение к нему. В 3.0.0 этот
-блок убран целиком. Документация на GitHub всегда свежая, а не той версии, что
-когда-то поставили на портал, — значит, второй её копии внутри модуля хватало
-ровно на то, чтобы расходиться с первой. Заодно с ней из поставки ушли
-`vendor/Michelf/`, `install/js/` и единственный ajax-контроллер модуля.
+Модуль не рендерит документацию в настройках: в поставке нет markdown-рендерера,
+`install/js/` и ajax-контроллеров. Документация на GitHub всегда свежая, а не той
+версии, что стоит на портале, — вторая копия внутри модуля только расходилась бы
+с первой.
+
+## Ключевые узлы `lib/`
+
+| путь | что это |
+|---|---|
+| `lib/main/modules/` | `Sync`, `Planner`, `Layout` — установка и обновление модулей линейки после выкладки файлов и раскладка их файлов вне каталога модуля |
+| `lib/cli/command/modules/` | команды `php bitrix/bitrix.php shef:modules:sync` и установки одного модуля; зарегистрированы в `.settings.php` → `console` |
+| `lib/ui/settingsform.*` | форма настроек карточками: `options.php` рисует её, когда `supports()`, иначе — вкладки `CAdminTabControl` |
+| `lib/main/options/` | типы опций страницы настроек |
+| `lib/options/` | `Config`, `Singleton`, `SmartStd` — чтение настроек модулей |
+| `lib/installator/` | строительные блоки установщика: UF, CRM (пресеты, смарт-процессы), заказ, ORM |
+| `lib/components/` | `AComponent`, `AControllerable`, `AjaxProcessor`, фильтры `Actions\Normal` и `Actions\Free` |
+| `lib/integration/` | базовые классы событий, инфоблоков и тестов заказа |
+| `lib/main/tempfile/` | временные файлы и замок `Pid` от двойного запуска |
+| `lib/traitlist/` | трейты, см. [9_traitlist.md](9_traitlist.md) |
 
 ## Нижний регистр в `lib/` обязателен
 
