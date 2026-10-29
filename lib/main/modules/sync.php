@@ -90,7 +90,9 @@ class Sync
     /**
      * Требования установщика к модулям портала: NEED_MODULES (версия '') и NEED_MODULES_BY_VERSION —
      * значения свойств класса по умолчанию, без конструктора. Нет класса или свойств — пусто: такой
-     * модуль проверяет только его установщик.
+     * модуль проверяет только его установщик. Файл установщика подключается в процессе команды (как
+     * при обновлении): канонический установщик — только объявление класса; фатальная ошибка в нём
+     * остановит и план.
      *
      * @return array<string, string> модуль => наименьшая версия
      */
@@ -124,25 +126,46 @@ class Sync
     }
 
     /**
-     * Версии модулей портала, которые нужны линейке по needs (не установлен — нет ключа).
+     * Версии модулей портала вне списка, которые нужны линейке по needs. Не установлен — нет ключа,
+     * установлен без читаемой версии — ''.
      *
-     * @param list<array{needs?: array<string, string>}> $states
-     * @param callable(string): (string|false) $getVersion
+     * @param list<array{id: string, needs?: array<string, string>}> $states
+     * @param callable(string): (string|false) $getVersion false — не установлен
      * @return array<string, string>
      */
     public static function outsideVersions(array $states, callable $getVersion): array
     {
+        $own = array_column($states, 'id', 'id');
         $versions = [];
         foreach ($states as $s) {
             foreach (array_keys($s['needs'] ?? []) as $dep) {
-                if (!array_key_exists($dep, $versions)) {
-                    $v = $getVersion((string)$dep);
-                    $versions[$dep] = is_string($v) && $v !== '' ? $v : null;
+                $dep = (string)$dep;
+                if (!isset($own[$dep]) && !array_key_exists($dep, $versions)) {
+                    $v = $getVersion($dep);
+                    if ($v !== false) {
+                        $versions[$dep] = (string)$v;
+                    }
                 }
             }
         }
 
-        return array_filter($versions, static fn (?string $v): bool => $v !== null);
+        return $versions;
+    }
+
+    /**
+     * План команды по состоянию: зависимости ядра (установлены ли) и версии модулей портала.
+     *
+     * @param list<array{id: string, version: string, requires: list<string>, installed: bool, synced: string, needs?: array<string, string>}> $states
+     * @param list<string>|null $only
+     * @param callable(string): bool $isInstalled
+     * @param callable(string): (string|false) $getVersion
+     * @return list<array{id: string, action: string, reason: string, version: string}>
+     */
+    public static function plan(array $states, ?array $only, callable $isInstalled, callable $getVersion): array
+    {
+        $versions = static::outsideVersions($states, static fn (string $id): string|false => $isInstalled($id) ? $getVersion($id) : false);
+
+        return Planner::plan($states, static::installedOutside($states, $isInstalled), $only, $versions);
     }
 
     /**

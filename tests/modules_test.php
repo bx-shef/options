@@ -97,7 +97,28 @@ namespace {
     Check::same('модуль линейки — по версии своих файлов', $plan[1]['reason'], 'нужно: shef.options 3.0.0+ (установлена 2.9.0)');
     $plan = Planner::plan([$opt, $n('shef.toolsai', ['ai' => ''])], [], null, []);
     Check::same('NEED_MODULES без версии: нет модуля — заблокирован', $plan[1]['reason'], 'нужно: ai (не установлен)');
-    Check::same('версии портала: только нужные по needs и установленные', Sync::outsideVersions([['needs' => ['ai' => '', 'crm' => '1']], ['needs' => ['crm' => '2', 'im' => '']]], static fn (string $id): string|false => ['ai' => '26.1000.0', 'crm' => '26.700.0'][$id] ?? false), ['ai' => '26.1000.0', 'crm' => '26.700.0']);
+    Check::same('версии портала: нужные по needs, вне списка; не установлен — нет ключа', Sync::outsideVersions([['id' => 'shef.a', 'needs' => ['ai' => '', 'crm' => '1', 'shef.b' => '1']], ['id' => 'shef.b', 'needs' => ['crm' => '2', 'im' => '', 'note' => '1']]], static fn (string $id): string|false => ['ai' => '26.1000.0', 'crm' => '26.700.0', 'note' => '', 'shef.b' => '9'][$id] ?? false), ['ai' => '26.1000.0', 'crm' => '26.700.0', 'note' => '']);
+    Check::same('установлен, версия не читается — заблокирован с причиной', Planner::plan([$opt, $n('shef.toolsai', ['crm' => '26.800.0'])], [], null, ['crm' => ''])[1]['reason'], 'нужно: crm 26.800.0+ (версия не читается)');
+    $synced = $n('shef.toolsai', $needs, true);
+    $synced['synced'] = '1.76.0';
+    $plan = Planner::plan([$opt, $synced], ['ai', 'crm'], null, ['ai' => '26.1000.0', 'crm' => '26.700.0']);
+    Check::same('установленный и синхронизированный на старом ядре — skip с причиной (команда не падает)', [$plan[1]['action'], $plan[1]['reason']], [Planner::SKIP, 'актуален; нужно: crm 26.800.0+ (установлена 26.700.0)']);
+    $plan = Planner::plan([$opt, $n('shef.toolsai', ['ai' => '', 'crm' => '26.800.0'], true)], ['crm'], null, ['crm' => '26.800.0']);
+    Check::same('установленный: NEED_MODULES без версии не блокирует (его уже ставили)', $actions($plan), ['shef.options:skip', 'shef.toolsai:update']);
+    $plan = Planner::plan([$opt, $m('shef.problems', ['x.y']), $n('shef.toolsai', ['shef.problems' => '2.0.0'])]);
+    Check::same('needs на заблокированный модуль списка — «сама не встанет»', $plan[2]['reason'], 'нужно: shef.problems (сама не встанет)');
+
+    Check::group('Sync::plan: склейка команды (ядро — через функции)');
+
+    $states2 = [$opt, $n('shef.toolsai', $needs)];
+    $core = ['shef.options' => '3.8.0', 'ai' => '26.1500.0', 'crm' => '26.700.0'];
+    $isInst = static fn (string $id): bool => isset($core[$id]);
+    $getVer = static fn (string $id): string => $core[$id] ?? '';
+    Check::same('crm 26.700 на портале — заблокирован с версией', Sync::plan($states2, null, $isInst, $getVer)[1]['reason'], 'нужно: crm 26.800.0+ (установлена 26.700.0)');
+    $core['crm'] = '26.1750.0';
+    $isInst = static fn (string $id): bool => isset($core[$id]);
+    $getVer = static fn (string $id): string => $core[$id] ?? '';
+    Check::same('стенд ai 26.1500 / crm 26.1750 — ставится', $actions(Sync::plan($states2, null, $isInst, $getVer)), ['shef.options:skip', 'shef.toolsai:install']);
 
     Check::group('Sync: модули на диске');
 

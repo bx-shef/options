@@ -20,8 +20,10 @@ namespace Shef\Options\Main\Modules;
  * Действия: install — не установлен; update — установлен, версия файлов не та, что при последней
  * синхронизации (в том числе неизвестна); skip — установлен и уже синхронизирован; blocked — нужна
  * зависимость, которой нет ни в файлах, ни на портале, или зависимость сама не встанет; а также
- * модуль, которому не хватает версии модуля портала по needs (и установленный: установщик на таком
- * ядре отказал бы). Причина называет модуль, нужную и установленную версию.
+ * модуль, которому не хватает версии модуля портала по needs. Причина называет модуль, нужную и
+ * установленную версию. Установленный модуль сверяется только по версиям (NEED_MODULES_BY_VERSION):
+ * обновление файлов на старом ядре — blocked, уже синхронизированный — skip с той же причиной
+ * (команда не падает на каждом запуске, пока ядро не обновят).
  */
 final class Planner
 {
@@ -66,10 +68,16 @@ final class Planner
                 $missing[] = 'циклическая зависимость';
             }
 
-            $short = static::shortVersions($m['needs'] ?? [], $byId, $versions);
+            $needs = $m['needs'] ?? [];
+            if ($m['installed']) {
+                $needs = array_filter($needs, static fn (string $min): bool => $min !== '');
+            }
+            $short = static::shortVersions($needs, $byId, $versions, $blocked);
             $absent = $missing !== [] && !$m['installed'];
 
-            if ($absent || $short !== []) {
+            if ($m['installed'] && !$absent && $short !== [] && $m['synced'] === $m['version']) {
+                $plan[] = ['id' => $id, 'action' => self::SKIP, 'reason' => 'актуален; нужно: '.implode(', ', $short), 'version' => $m['version']];
+            } elseif ($absent || $short !== []) {
                 $blocked[$id] = true;
                 $why = array_merge($absent ? ['нет: '.implode(', ', $missing)] : [], $short !== [] ? ['нужно: '.implode(', ', $short)] : []);
                 $plan[] = ['id' => $id, 'action' => self::BLOCKED, 'reason' => implode('; ', $why), 'version' => $m['version']];
@@ -87,20 +95,26 @@ final class Planner
 
     /**
      * Чего не хватает по версиям: «crm 26.800.0+ (установлена 26.700.0)», «ai (не установлен)».
-     * Модуль из списка сверяется по версии своих файлов (его поставят или обновят раньше).
+     * Модуль из списка сверяется по версии своих файлов (его поставят или обновят раньше), если сам
+     * не заблокирован. Версия модуля портала '' — установлен, но версия не читается.
      *
      * @param array<string, string> $needs
      * @param array<string, array{version: string}> $byId
      * @param array<string, string> $versions
+     * @param array<string, true> $blocked
      * @return list<string>
      */
-    public static function shortVersions(array $needs, array $byId, array $versions): array
+    public static function shortVersions(array $needs, array $byId, array $versions, array $blocked = []): array
     {
         $short = [];
         foreach ($needs as $dep => $min) {
             $have = isset($byId[$dep]) ? $byId[$dep]['version'] : ($versions[$dep] ?? null);
-            if ($have === null) {
+            if (isset($blocked[$dep])) {
+                $short[] = $dep.' (сама не встанет)';
+            } elseif ($have === null) {
                 $short[] = $dep.($min !== '' ? ' '.$min.'+' : '').' (не установлен)';
+            } elseif ($min !== '' && $have === '') {
+                $short[] = $dep.' '.$min.'+ (версия не читается)';
             } elseif ($min !== '' && version_compare($have, $min) < 0) {
                 $short[] = $dep.' '.$min.'+ (установлена '.$have.')';
             }
