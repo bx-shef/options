@@ -67,6 +67,7 @@ unlink($portal.'/bitrix/modules/shef.bad/install/layout.php');
 [$code, $out] = $run($portal);
 Check::same('расхождение — код 1 и строка «~»', [$code, str_contains($out, '~ /bitrix/js/shef.demo/a.js'), str_contains($out, 'shef.bad')], [1, true, true]);
 [$code] = $run($portal, '--write');
+clearstatcache();
 Check::same('--write — код 0, потом сверка чистая', [$code, $run($portal)[0]], [0, 0]);
 Check::same('без корня — код 2', $run('/nonexistent')[0], 2);
 
@@ -114,6 +115,7 @@ Check::same('remove: каталог и свой файл — да, правле�
 [$code, $out] = $run($portal);
 Check::same('скрипт: «~» блока и «-» удаляемого, код 1', [$code, str_contains($out, '~ /.top.menu_ext.php'), str_contains($out, '- /shef/old'), str_contains($out, '- /local/edited.php')], [1, true, true, false]);
 [$code] = $run($portal, '--write');
+clearstatcache();
 Check::same('--write: блок вписан, удалено, правленый на месте, сверка чистая', [$code, file_get_contents($portal.'/.top.menu_ext.php'), is_dir($portal.'/shef/old'), is_file($portal.'/local/own.php'), is_file($portal.'/local/edited.php'), $run($portal)[0]], [0, "<?php\n".$theirs."\n".$ours, false, false, true, 0]);
 file_put_contents($portal.'/.top.menu_ext.php', "<?php\n".$ours.$theirs);
 Check::same('сосед дописал блок после нашего — повторная сборка его сохраняет', Layout::build($portal, ['shef.blk' => $blk])['files']['/.top.menu_ext.php'], "<?php\n".$theirs."\n".$ours);
