@@ -41,7 +41,7 @@ Composer разворачивает в целевой каталог **коре�
 | `project-context.php` | SHIP | знает, есть ли на проекте Composer и где его `vendor` |
 | `options.php`, `options_conf.php`, `optionsconfig.php` | SHIP | страница настроек модуля |
 | `lib/` | SHIP | классы модуля, **имена файлов строго строчными**; ключевые узлы — ниже |
-| `tools/layout.php` | SHIP | CLI без ядра: собирает `install/layout.php` модулей `shef.*` и сверяет или пишет (`--write`) их файлы в дереве портала |
+| `tools/layout.php` | SHIP | CLI без ядра: собирает `install/layout.php` модулей `shef.*` и сверяет или пишет (`--write`) их файлы, блоки в общих файлах сайта и удаления в дереве портала |
 | `lang/ru/` | SHIP | языковые файлы, зеркалят структуру `lib/` |
 | `README.md`, `CHANGELOG.md`, `LICENSE` | SHIP | |
 | `composer.json` | SHIP | манифест пакета |

@@ -6,8 +6,10 @@ declare(strict_types=1);
  * Раскладка модулей линейки в репозитории портала — без портала, базы и ядра (issue #55).
  *
  * Портал, который выкладывается из git, держит в git файлы, которые установщики модулей кладут
- * вне своего каталога (/bitrix/css, /bitrix/js, заглушки страниц, компоненты). Скрипт собирает их
- * из install/layout.php каждого модуля shef.* и сверяет с деревом или пишет.
+ * вне своего каталога (/bitrix/css, /bitrix/js, заглушки страниц, компоненты), свои блоки в общих
+ * файлах сайта (/.top.menu_ext.php) и удаляют то, что убрали сами. Скрипт собирает это из
+ * install/layout.php каждого модуля shef.* и сверяет с деревом («+» нет, «~» другой, «-» удалить)
+ * или пишет (--write).
  *
  *   php www/bitrix/modules/shef.options/tools/layout.php www            # сверить: код 1, если разошлось
  *   php www/bitrix/modules/shef.options/tools/layout.php www --write    # записать
@@ -47,9 +49,15 @@ if ($write) {
     foreach (\Shef\Options\Main\Modules\Layout::write($root, $layout['files']) as $path) {
         echo "записан $path\n";
     }
+    foreach (\Shef\Options\Main\Modules\Layout::remove($root, $layout['remove']) as $path) {
+        echo "удалён $path\n";
+    }
     exit($layout['errors'] === [] ? 0 : 1);
 }
 $diff = \Shef\Options\Main\Modules\Layout::diff($root, $layout['files']);
+foreach (\Shef\Options\Main\Modules\Layout::removable($root, $layout['remove']) as $path) {
+    $diff[] = '- '.$path;
+}
 foreach ($diff as $line) {
     echo $line."\n";
 }
