@@ -86,8 +86,12 @@ $merge = static fn (?string $file): string => Layout::mergeBlock($file, $b['begi
 Check::same('файла нет — открывающий тег и блок', $merge(null), "<?php\n\n".$ours);
 Check::same('чужой файл — блок в конец, чужое как было', $merge("<?php\n\$a = [];\n"), "<?php\n\$a = [];\n\n".$ours);
 Check::same('повтор ничего не меняет', $merge($merge("<?php\n\$a = [];\n")), $merge("<?php\n\$a = [];\n"));
-Check::same('чужой блок после нашего — остаётся, наш — в конец', $merge("<?php\n\n".$ours."\n".$theirs), "<?php\n\n\n".$theirs."\n".$ours);
-Check::same('старый вариант нашего блока заменяется', $merge("<?php\n// shef.demo: menu begin\nold();\n// shef.demo: menu end\n"), "<?php\n\n".$ours);
+Check::same('чужой блок после нашего — оба на своих местах', $merge("<?php\n\n".$ours."\n".$theirs), "<?php\n\n".$ours."\n".$theirs);
+Check::same('старый вариант нашего между чужими — заменён на месте', $merge("<?php\n".$theirs."// shef.demo: menu begin\nold();\n// shef.demo: menu end\n// x\n"), "<?php\n".$theirs.$ours."// x\n");
+Check::same('две копии нашего — снимаются, одна в конце', $merge("<?php\n".$ours.$theirs.$ours), "<?php\n".$theirs."\n".$ours);
+Check::same('тело с CRLF в файле CRLF — без \r\r', str_contains(Layout::mergeBlock("<?php\r\n", 'b', 'e', "x;\r\ny;\r\n"), "\r\r"), false);
+Check::throws('перевод строки в метке — исключение', \RuntimeException::class, static fn () => Layout::mergeBlock(null, "b\n", 'e', ''));
+Check::same('старый вариант нашего блока заменяется', $merge("<?php\n// shef.demo: menu begin\nold();\n// shef.demo: menu end\n"), "<?php\n".$ours);
 Check::same('CRLF сохраняется', $merge("<?php\r\n\$a = [];\r\n"), "<?php\r\n\$a = [];\r\n\r\n".str_replace("\n", "\r\n", $ours));
 Check::same('файл кончается HTML — блок в своих тегах', $merge("<?php \$a = []; ?>\n<b>x</b>\n"), "<?php \$a = []; ?>\n<b>x</b>\n<?php ".rtrim($ours, "\n")." ?>\n");
 Check::same('и снимается со своими тегами', Layout::stripBlock($merge("<?php \$a = []; ?>\n<b>x</b>\n"), $b['begin'], $b['end']), "<?php \$a = []; ?>\n<b>x</b>\n");
@@ -118,7 +122,23 @@ Check::same('скрипт: «~» блока и «-» удаляемого, ко�
 clearstatcache();
 Check::same('--write: блок вписан, удалено, правленый на месте, сверка чистая', [$code, file_get_contents($portal.'/.top.menu_ext.php'), is_dir($portal.'/shef/old'), is_file($portal.'/local/own.php'), is_file($portal.'/local/edited.php'), $run($portal)[0]], [0, "<?php\n".$theirs."\n".$ours, false, false, true, 0]);
 file_put_contents($portal.'/.top.menu_ext.php', "<?php\n".$ours.$theirs);
-Check::same('сосед дописал блок после нашего — повторная сборка его сохраняет', Layout::build($portal, ['shef.blk' => $blk])['files']['/.top.menu_ext.php'], "<?php\n".$theirs."\n".$ours);
+Check::same('сосед дописал блок после нашего — повторная сборка ничего не меняет', Layout::build($portal, ['shef.blk' => $blk])['files']['/.top.menu_ext.php'], "<?php\n".$ours.$theirs);
+mkdir($portal.'/outside/x', 0755, true);
+mkdir($portal.'/site', 0755, true);
+symlink($portal.'/outside', $portal.'/site/link');
+Check::same('remove: «.», пусто, «\\», «..» и путь через ссылку наружу — мимо', Layout::removable($portal.'/site', ['/.' => null, '/' => null, '/a\\b' => null, '/x/../..' => null, '/link/x' => null]), []);
+Check::same('remove: путь и в раскладке — ошибка, не удаляется; повтор пути — без условия главнее', (static function () use ($portal): array {
+    $m = $portal.'/bitrix/modules/shef.conf';
+    mkdir($m.'/install', 0755, true);
+    file_put_contents($m.'/install/layout.php', '<?php return static fn (string $r, string $d): array => [\'files\' => [\'/a/b.php\' => \'x\'], \'remove\' => [\'/a\' => null, \'/c\' => [\'1\']]];');
+    $n = $portal.'/bitrix/modules/shef.conf2';
+    mkdir($n.'/install', 0755, true);
+    file_put_contents($n.'/install/layout.php', '<?php return static fn (string $r, string $d): array => [\'remove\' => [\'/c\' => null]];');
+    $r = Layout::build($portal, ['shef.conf' => $m, 'shef.conf2' => $n]);
+    exec('rm -rf '.escapeshellarg($m).' '.escapeshellarg($n));
+
+    return [$r['remove'], $r['errors']];
+})(), [['/c' => null], ['/a: и в remove, и в раскладке — не удаляется']]);
 file_put_contents($portal.'/.top.menu_ext.php', "<?php\n// shef.demo: menu begin\n");
 $broken = Layout::build($portal, ['shef.blk' => $blk]);
 Check::same('метки разбиты — ошибка, файла в раскладке нет', [isset($broken['files']['/.top.menu_ext.php']), count($broken['errors'])], [false, 1]);

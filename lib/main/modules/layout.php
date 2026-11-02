@@ -71,7 +71,23 @@ final class Layout
                 $blocks[(string)$path][] = [$id, $block];
             }
             foreach ($layout['remove'] ?? [] as $path => $hashes) {
-                $remove[(string)$path] = is_array($hashes) ? array_values(array_map('strval', $hashes)) : null;
+                $path = (string)$path;
+                $hashes = is_array($hashes) ? array_values(array_map('strval', $hashes)) : null;
+                // два модуля об одном пути: без условия главнее, md5 — объединяются
+                if (!array_key_exists($path, $remove)) {
+                    $remove[$path] = $hashes;
+                } elseif ($remove[$path] !== null) {
+                    $remove[$path] = $hashes === null ? null : array_values(array_unique([...$remove[$path], ...$hashes]));
+                }
+            }
+        }
+        foreach (array_keys($remove) as $path) {
+            foreach ([...array_keys($files), ...array_keys($blocks)] as $kept) {
+                if ($kept === $path || str_starts_with($kept, rtrim($path, '/').'/')) {
+                    $errors[] = $path.': и в remove, и в раскладке — не удаляется';
+                    unset($remove[$path]);
+                    break;
+                }
             }
         }
         foreach ($blocks as $path => $list) {
@@ -112,15 +128,26 @@ final class Layout
      */
     public static function mergeBlock(?string $current, string $begin, string $end, string $body, string $note = ''): string
     {
+        foreach ([$begin, $end, $note] as $line) {
+            if (preg_match('/[\r\n]/', $line)) {
+                throw new \RuntimeException('метка или строка блока с переводом строки');
+            }
+        }
+        $body = str_replace("\r\n", "\n", $body);
         $block = static fn (bool $wrapped): string => ($wrapped ? '<?php ' : '').$begin.($note !== '' ? ' '.$note : '')."\n"
-            .($body === '' ? '' : rtrim($body, "\r\n")."\n").$end.($wrapped ? ' ?>' : '')."\n";
+            .($body === '' ? '' : rtrim($body, "\n")."\n").$end.($wrapped ? ' ?>' : '')."\n";
         if ($current === null || trim($current) === '') {
             return "<?php\n\n".$block(false);
         }
-        if (substr_count($current, $begin) !== substr_count($current, $end)) {
+        $count = substr_count($current, $begin);
+        if ($count !== substr_count($current, $end)) {
             throw new \RuntimeException('метки блока разбиты ('.$begin.')');
         }
         $eol = str_contains($current, "\r\n") ? "\r\n" : "\n";
+        if ($count === 1) {
+            // блок один — на своём месте: порядок блоков разных модулей в файле не меняется
+            return (string)preg_replace_callback(static::blockPattern($begin, $end), static fn (array $m): string => str_replace("\n", $eol, $block(str_starts_with($m[0], '<?php '))), $current, 1);
+        }
         $rest = rtrim(static::stripBlock($current, $begin, $end));
         if ($rest === '') {
             return "<?php".$eol.$eol.str_replace("\n", $eol, $block(false));
@@ -133,9 +160,13 @@ final class Layout
     /** Файл без блока модуля (все копии, со своими тегами на строках меток). Меток нет — как был. */
     public static function stripBlock(string $current, string $begin, string $end): string
     {
-        $pattern = '~(?:<\?php )?'.preg_quote($begin, '~').'.*?'.preg_quote($end, '~').'(?: \?>)?(?:\r?\n)?~s';
+        return (string)preg_replace(static::blockPattern($begin, $end), '', $current);
+    }
 
-        return (string)preg_replace($pattern, '', $current);
+    /** Блок между метками — со своими тегами PHP на строках меток и переводом строки. */
+    private static function blockPattern(string $begin, string $end): string
+    {
+        return '~(?:<\?php )?'.preg_quote($begin, '~').'.*?'.preg_quote($end, '~').'(?: \?>)?(?:\r?\n)?~s';
     }
 
     /** Код разбирается PHP (короткие «<?» — как «<?php»: портал с short_open_tag, CLI — как придётся). */
@@ -173,17 +204,23 @@ final class Layout
      */
     public static function removable(string $documentRoot, array $remove): array
     {
-        $documentRoot = rtrim($documentRoot, '/');
-        if ($documentRoot === '') {
+        $documentRoot = rtrim(str_replace('\\', '/', $documentRoot), '/');
+        $real = realpath($documentRoot);
+        if ($documentRoot === '' || $real === false) {
             return [];
         }
         $found = [];
         foreach ($remove as $path => $hashes) {
             $path = (string)$path;
-            if (trim($path, '/') === '' || str_contains($path, '..')) {
-                continue;
+            $segments = explode('/', ltrim($path, '/'));
+            if (preg_match('/[\\\\\0]/', $path) || array_intersect($segments, ['', '.', '..']) !== []) {
+                continue; // пустой путь, «.», «..», «\» — мимо: корень и выше не трогаем
             }
-            $target = $documentRoot.'/'.ltrim($path, '/');
+            $target = $documentRoot.'/'.implode('/', $segments);
+            $parent = realpath(dirname($target));
+            if ($parent === false || ($parent !== $real && !str_starts_with($parent.'/', $real.'/'))) {
+                continue; // родитель — ссылка за пределы корня сайта
+            }
             if ($hashes === null ? (file_exists($target) || is_link($target))
                 : (is_file($target) && !is_link($target) && in_array(md5_file($target), $hashes, true))) {
                 $found[] = $path;
@@ -195,6 +232,7 @@ final class Layout
 
     /**
      * Удалить из дерева то, что removable(); ссылки не разворачиваются — удаляется сама ссылка.
+     * Не удалилось (права) — исключение с путём.
      *
      * @param array<string, list<string>|null> $remove
      * @return list<string> удалённые пути
@@ -214,7 +252,9 @@ final class Layout
     private static function removeTree(string $path): void
     {
         if (is_link($path) || is_file($path)) {
-            unlink($path);
+            if (!@unlink($path)) {
+                throw new \RuntimeException('не удалён '.$path);
+            }
 
             return;
         }
@@ -223,7 +263,9 @@ final class Layout
                 static::removeTree($path.'/'.$name);
             }
         }
-        rmdir($path);
+        if (!@rmdir($path)) {
+            throw new \RuntimeException('не удалён '.$path);
+        }
     }
 
     /**

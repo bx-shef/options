@@ -49,8 +49,16 @@ if ($write) {
     foreach (\Shef\Options\Main\Modules\Layout::write($root, $layout['files']) as $path) {
         echo "записан $path\n";
     }
-    foreach (\Shef\Options\Main\Modules\Layout::remove($root, $layout['remove']) as $path) {
-        echo "удалён $path\n";
+    if ($layout['errors'] !== []) {
+        exit(1); // удаление — только по целой раскладке
+    }
+    try {
+        foreach (\Shef\Options\Main\Modules\Layout::remove($root, $layout['remove']) as $path) {
+            echo "удалён $path\n";
+        }
+    } catch (\RuntimeException $e) {
+        fwrite(STDERR, 'ОШИБКА '.$e->getMessage()."\n");
+        exit(1);
     }
     exit($layout['errors'] === [] ? 0 : 1);
 }
