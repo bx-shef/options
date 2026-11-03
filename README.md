@@ -72,6 +72,32 @@ composer require bxshef/options
 Без четвёртого шага модуль формально стоит, но смежные модули будут работать от
 пользователя по умолчанию — это почти всегда не то, что нужно.
 
+# Как запустить диагностику
+
+Кратко, для администратора сервера. Только чтение, секреты не печатаются.
+
+1. Войти на сервер пользователем `bitrix` (не root, без sudo).
+2. Запустить один из вариантов:
+   - shef.options с командой диагностики стоит на портале:
+     ```bash
+     cd /home/bitrix/www/bitrix
+     php bitrix.php shef:modules:diag > ~/diag.txt
+     php bitrix.php shef:modules:diag --json > ~/diag.json
+     ```
+   - иначе (старый shef.options или его нет, или `bitrix.php` пишет «Symfony Console is not installed») — одиночный файл
+     [`tools/diag.php`](https://github.com/bx-shef/options/blob/main/tools/diag.php) из репозитория bx-shef/options
+     (ветка `main`, кнопка «Raw»; или из каталога `bitrix/modules/shef.options/tools/` любой свежей копии модуля), положить в
+     домашний каталог `bitrix`:
+     ```bash
+     php ~/diag.php --root=/home/bitrix/www > ~/diag.txt
+     php ~/diag.php --root=/home/bitrix/www --json > ~/diag.json
+     ```
+3. Куда смотреть: последняя строка «ПУТЬ ОБНОВЛЕНИЯ», строки `FAIL` и `WARN`, раздел «Лицензии»
+   (shef.toolsai и shef.cowork отдельно: режим, срок, дни).
+4. Владельцу — оба файла: `diag.txt` и `diag.json`.
+
+Код выхода 2 — не найден корень сайта (укажите `--root=`), запуск от root или файл `--targets` не читается.
+
 # Диагностика портала по модулям линейки
 
 Отчёт о конфигурации портала по модулям `shef.*`: по нему выбирается путь обновления. Только
