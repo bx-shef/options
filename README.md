@@ -75,27 +75,50 @@ composer require bxshef/options
 # Диагностика портала по модулям линейки
 
 Отчёт о конфигурации портала по модулям `shef.*`: по нему выбирается путь обновления. Только
-чтение, секреты не выводятся (ключи и токены — «задан / не задан», адреса — без логина и параметров).
+чтение. Секреты не выводятся: ключи и токены — «задан / не задан», адреса — без логина, параметров
+и сегментов пути, похожих на токен.
 
 ```bash
 cd /home/bitrix/www/bitrix
 php bitrix.php shef:modules:diag                 # текст
 php bitrix.php shef:modules:diag --json          # JSON
 php bitrix.php shef:modules:diag --no-network    # без запросов к /health и локальным моделям
+php bitrix.php shef:modules:diag --mcp-dir=/home/bitrix/mcp    # каталог MCP (по умолчанию <родитель корня>/mcp)
+php bitrix.php shef:modules:diag --targets=targets.json        # свои цели выкатки
 ```
 
-Портал без shef.options — тот же отчёт одним файлом `tools/diag.php` (скопировать на сервер):
+Портал без shef.options — тот же отчёт одним файлом `tools/diag.php` (скопировать на сервер, PHP 8.1+):
 
 ```bash
-php diag.php --root=/home/bitrix/www [--json] [--no-network] [--mcp-dir=/home/bitrix/mcp]
+php diag.php [--json] [--no-network] [--root=/home/bitrix/www] [--mcp-dir=…] [--targets=…]
 ```
 
-Запускать от пользователя веб-сервера (на BitrixVM — `bitrix`), без sudo. Разделы: окружение
-(PHP, main), модули `shef.*` (установлен, версия, дата), shef.cowork (адрес, версия по `/health`,
-образ из `.env` MCP), file-extract, направления shef.toolsai (провайдер, модель, адрес, ключ),
-сервисы лёгкой модели и эмбеддингов (`/health`, версия), лицензия, `/bitrix/js` против `install/js`
-модулей, права на запись, агенты и cron, правки ядра (shef.haschangefiles), готовность к выкатке и
-строка «ПУТЬ ОБНОВЛЕНИЯ». Код выхода 0; 2 — не найден корень сайта.
+`--root` нужен, если файл лежит вне `bitrix/modules/shef.options/tools` и корень сайта — не
+`/home/bitrix/www` (порядок поиска: `--root`, `DOCUMENT_ROOT`, каталог модуля, `/home/bitrix/www`).
+Не поднялось ядро (нет базы, сломан `init.php`) — печатаются версии модулей с диска.
+
+Запускать от пользователя веб-сервера (на BitrixVM — `bitrix`), без sudo; от root — отказ
+(`--allow-root`). Разделы:
+
+* окружение: PHP, main, редакция, пользователь процесса, корень сайта, портал в git;
+* модули `shef.*` из `bitrix/modules` и `local/modules`: установлен, версия и дата файлов;
+* shef.cowork и file-extract: адрес MCP-сервера из помощника, версия по `/health`, `MCP_IMAGE`,
+  `FILE_EXTRACT_URL`, `FILE_EXTRACT_TAG` из `.env` MCP;
+* направления shef.toolsai: провайдер, модель, адрес, ключ — по `Config` shef.toolsai (пресеты,
+  наследование от «Текст»); свои сервисы лёгкой модели и эмбеддингов — `/health` и версия;
+  локальные адреса — `GET /models`;
+* лицензия (без продления), `/bitrix/js` против `install/js` модулей, права на запись и чужие
+  файлы, агенты `shef.*` и cron, правки ядра (`check-core-changes.php` shef.haschangefiles);
+* выкатка: что на целевой версии, что обновить, что не проверено, строка «ПУТЬ ОБНОВЛЕНИЯ».
+
+Цели по умолчанию — выкатка 10.11.2026 (`Diag::TARGETS`); другие — файлом
+`{"release": "2026-12-01", "targets": {"shef.toolsai": "1.95.0", "shef.cowork": "1.12.0"}}`.
+
+JSON для машинной обработки — ключ `data` (меняется только вместе с `format`): `modules`,
+`cowork`, `directions`, `license`, `js`, `cron`, `agents`, `core`, `rollout` (`route`: `none`,
+`modules`, `mcp`, `modules+mcp`, `fresh`, `unknown`; `method`: `git`, `sync`, `cp`; `behind`,
+`done`, `unknown`, `release`, `targets`). `sections` — те же строки, что в тексте. Код выхода 0;
+2 — не найден корень сайта, цели не читаются или запуск от root без `--allow-root`.
 
 # Установка и обновление линейки одной командой
 
