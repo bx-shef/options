@@ -42,6 +42,14 @@ Check::same('своё направление, без ключа, локальн�
 
 $d = Diag::direction(['api_lightbaseurl' => 'http://toolsai-light:8000/v1', 'api_lightmodel' => 'qwen'], 'light');
 Check::same('имена настроек строчными, как хранит ядро', [$d['url'], $d['model'], $d['urlShared']], ['http://toolsai-light:8000/v1', 'qwen', false]);
+$d = Diag::direction(['api_llmbaseurl' => 'https://api.deepseek.com/v1', 'api_llmapikey' => 'T', 'api_lightbaseurl' => 'http://toolsai-light:8000/v1'], 'light');
+Check::same('свой адрес без ключа — ключ «Текст» не наследуется', [$d['key'], $d['keyFrom']], [false, '']);
+$d = Diag::direction(['api_baseurl' => 'http://asr:8000/v1', 'api_apikey' => 'A', 'api_dealpreset' => 'deepseek'], 'deal');
+Check::same('пресет без адреса — имя пресета, ключ не наследуется', [$d['urlFrom'], $d['key']], ['пресет deepseek', false]);
+$d = Diag::direction(['api_baseurl' => 'http://asr:8000/v1', 'api_apikey' => 'A', 'api_webapikey' => 'W'], 'web');
+Check::same('поиск в интернете — без адреса, свой ключ', [$d['url'], $d['key'], $d['local']], ['', true, false]);
+Check::same('короткие и служебные значения не вычищаются', Diag::redact('installed: true, port 3000', ['true', '3000', 'Y']), 'installed: true, port 3000');
+Check::same('неизвестная версия — «не проверено», не «отстаёт»', Diag::rollout(['shef.options' => '3.9.0', 'shef.toolsai' => '1.91.0', 'shef.cowork' => null], ['shef.options' => '3.9.0', 'shef.toolsai' => '1.91.0', 'shef.cowork' => '1.11.0'], true, false), ['path' => 'обновление не нужно: всё на целевых версиях', 'behind' => [], 'done' => ['shef.options 3.9.0', 'shef.toolsai 1.91.0'], 'unknown' => ['shef.cowork — версия не проверена, цель 1.11.0']]);
 $t = ['shef.options' => '3.9.0', 'shef.toolsai' => '1.91.0', 'shef.cowork' => '1.11.0'];
 Check::same('всё на цели', Diag::rollout(['shef.options' => '3.9.0', 'shef.toolsai' => '1.91.1', 'shef.cowork' => '1.11.0'], $t, true, false)['path'], 'обновление не нужно: всё на целевых версиях');
 Check::same('нет toolsai — новая установка', str_starts_with(Diag::rollout([], $t, false, false)['path'], 'новая установка'), true);
@@ -58,13 +66,15 @@ mkdir($mod.'/install/js/shef/toolsaiassistant', 0755, true);
 mkdir($www.'/bitrix/js/shef/toolsaiassistant', 0755, true);
 mkdir($www.'/bitrix/modules/shef.toolsai/install', 0755, true);
 mkdir($p.'/mcp', 0755, true);
+mkdir($www.'/local/modules/shef.toolsaikb/install/js/shef/kb', 0755, true);
+file_put_contents($www.'/local/modules/shef.toolsaikb/install/js/shef/kb/k.js', 'kb');
 file_put_contents($mod.'/install/version.php', '<?php $arModuleVersion = [\'VERSION\' => \'1.95.1\', \'VERSION_DATE\' => \'2026-11-01 10:00:00\'];');
 file_put_contents($www.'/bitrix/modules/shef.toolsai/install/version.php', '<?php $arModuleVersion = [\'VERSION\' => \'1.87.1\', \'VERSION_DATE\' => \'2026-10-20 10:00:00\'];');
 file_put_contents($mod.'/install/js/shef/toolsaiassistant/a.js', 'new');
 file_put_contents($mod.'/install/js/shef/toolsaiassistant/b.js', 'same');
 file_put_contents($www.'/bitrix/js/shef/toolsaiassistant/a.js', 'old');
 file_put_contents($www.'/bitrix/js/shef/toolsaiassistant/b.js', 'same');
-file_put_contents($p.'/mcp/.env', "MCP_IMAGE=ghcr.io/bx-shef/toolsai-mcp:1.7.3\nB24_CLIENT_SECRET=\"mcp-secret-value\"\nFILE_EXTRACT_KEY=extract-secret-value\nFILE_EXTRACT_URL=http://file-extract:3000\n");
+file_put_contents($p.'/mcp/.env', "TRUST_PROXY=true\nPORT=3000\nMCP_IMAGE=ghcr.io/bx-shef/toolsai-mcp:1.7.3\nB24_CLIENT_SECRET=\"mcp-secret-value\"\nFILE_EXTRACT_KEY=extract-secret-value\nFILE_EXTRACT_URL=http://file-extract:3000\n");
 
 $m = Diag::jsMatch($mod, $www);
 Check::same('js: одинаковый и отличающийся', [$m['same'], $m['differ'], $m['missing']], [1, ['shef/toolsaiassistant/a.js'], []]);
@@ -113,6 +123,8 @@ Check::same('ключ текста — задан', $doc['data']['directions']['
 Check::same('образ MCP из .env', $doc['data']['mcpEnv']['MCP_IMAGE'] ?? null, 'ghcr.io/bx-shef/toolsai-mcp:1.7.3');
 Check::same('локальные эмбеддинги проверены', [in_array('http://127.0.0.1:8080/v1/models', $calls, true), $doc['data']['directions']['embed']['health'] ?? null], [true, 401]);
 Check::same('внешний движок не опрашивается', (bool)array_filter($calls, static fn (string $u): bool => str_contains($u, 'deepseek')), false);
+Check::same('модуль из local/modules сверяется', $doc['data']['js']['shef.toolsaikb']['missing'] ?? null, ['shef/kb/k.js']);
+Check::same('JSON цел при TRUST_PROXY=true в .env', ($doc['data']['modules']['shef.toolsai']['installed'] ?? null), true);
 Check::same('js расходится — шаг #336 FAIL', $doc['data']['rollout']['jsMatch'] ?? null, false);
 Check::same('toolsai 1.87.1 отстаёт', in_array('shef.toolsai 1.87.1 → 1.91.0', $doc['data']['rollout']['behind'] ?? [], true), true);
 Check::same('в тексте есть путь обновления', str_contains($text, 'ПУТЬ ОБНОВЛЕНИЯ'), true);
@@ -124,6 +136,10 @@ Check::same('в тексте «ключ задан»', str_contains($text, 'кл
 
 $noNet = new Diag($www, static fn (string $id): array => $opts[$id] ?? [], static fn (string $id): bool => $id === 'shef.toolsaiassistant');
 Check::same('--no-network: /health не вызывается', str_contains($noNet->collect()->text(), 'не проверялось (--no-network)'), true);
+$noNetDoc = json_decode($noNet->json(), true);
+Check::same('--no-network: shef.cowork «не проверено», не в «обновить»', [$noNetDoc['data']['rollout']['unknown'] ?? null, (bool)array_filter($noNetDoc['data']['rollout']['behind'] ?? [], static fn (string $l): bool => str_starts_with($l, 'shef.cowork'))], [['shef.cowork — версия не проверена, цель 1.11.0'], false]);
+$d = Diag::direction(['api_llmbaseurl' => 'https://api.deepseek.com/v1/', 'api_llmapikey' => 'T', 'api_assistantbaseurl' => 'https://API.deepseek.com/v1'], 'assistant');
+Check::same('свой адрес, совпадающий с «Текст», — ключ наследуется', [$d['key'], $d['keyFrom']], [true, 'как у «Текст»']);
 
 exec('rm -rf '.escapeshellarg($p));
 Check::finish();

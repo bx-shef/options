@@ -132,8 +132,11 @@ final class Diag
     }
 
     /**
-     * Направление shef.toolsai из настроек: свой адрес/ключ направления или общий (API_baseurl,
-     * API_apikey). Ключ — только «задан».
+     * Направление shef.toolsai из настроек — по правилам Config shef.toolsai (resolveAccess):
+     * распознавание и текст без своего адреса — общий (API_baseurl); сделки, помощник, лёгкая и
+     * эмбеддинги — как у «Текст»; выбран пресет без адреса — адрес пресета (показывается именем).
+     * Ключ наследуется, только если адрес тот же, что у родителя. Поиск в интернете — без адреса,
+     * только свой ключ. Ключ — только «задан».
      *
      * @param array<string, string> $o
      * @return array{provider: string, model: string, url: string, urlShared: bool, key: bool, keyShared: bool, urlFrom: string, keyFrom: string, local: bool}
@@ -141,43 +144,52 @@ final class Diag
     public static function direction(array $o, string $prefix): array
     {
         $o = array_change_key_case($o); // ядро хранит имена настроек строчными (api_llmmodel)
-        // Откат как в Config shef.toolsai: распознавание и поиск — на общие API_baseurl/API_apikey;
-        // текст — свой, иначе общий; сделки, помощник, лёгкая и эмбеддинги — свой, иначе как у текста.
-        $chain = in_array($prefix, ['asr', 'web', 'llm'], true) ? [$prefix, ''] : [$prefix, 'llm', ''];
-        $pick = static function (string $field) use ($o, $chain): array {
-            foreach ($chain as $i => $p) {
-                $v = trim((string)($o['api_'.$p.$field] ?? ''));
-                if ($v !== '') {
-                    return [$v, $i];
-                }
+        $get = static fn (string $name): string => trim((string)($o[$name] ?? ''));
+        $norm = static fn (string $u): string => rtrim(strtolower($u), '/');
+        $resolve = static function (string $p) use (&$resolve, $get, $norm): array {
+            if ($p === '') {
+                return ['url' => $get('api_baseurl'), 'key' => $get('api_apikey'), 'urlFrom' => '', 'keyFrom' => '', 'from' => 'общий'];
+            }
+            $parent = $resolve(in_array($p, ['asr', 'llm'], true) ? '' : 'llm');
+            $parentName = $p === 'asr' || $p === 'llm' ? 'общий' : 'как у «Текст»';
+            $url = $get('api_'.$p.'baseurl');
+            $urlFrom = '';
+            if ($url === '' && $get('api_'.$p.'preset') !== '') {
+                $urlFrom = 'пресет '.$get('api_'.$p.'preset');
+            } elseif ($url === '') {
+                $url = $parent['url'];
+                $urlFrom = $url !== '' ? $parentName : '';
+            }
+            $key = $get('api_'.$p.'apikey');
+            $keyFrom = '';
+            if ($key === '' && !str_starts_with($urlFrom, 'пресет') && $url !== '' && $norm($url) === $norm($parent['url']) && $parent['key'] !== '') {
+                $key = $parent['key'];
+                $keyFrom = $parentName;
             }
 
-            return ['', 0];
+            return ['url' => $url, 'key' => $key, 'urlFrom' => $urlFrom, 'keyFrom' => $keyFrom];
         };
-        [$url, $urlFrom] = $pick('baseurl');
-        [$key, $keyFrom] = $pick('apikey');
-        $own = $urlFrom === 0 ? $url : '';
-        $ownKey = $keyFrom === 0 && $key !== '';
-        $from = static fn (int $i): string => $i === 0 ? '' : ($chain[$i] === 'llm' ? 'как у «Текст»' : 'общий');
-        $model = trim((string)($o['api_'.$prefix.'model'] ?? '')) ?: trim((string)($o['api_'.$prefix.'presetmodel'] ?? ''));
+        $r = $prefix === 'web'
+            ? ['url' => '', 'key' => $get('api_webapikey'), 'urlFrom' => '', 'keyFrom' => '']
+            : $resolve($prefix);
+        $model = $get('api_'.$prefix.'model') ?: $get('api_'.$prefix.'presetmodel');
         if ($model === '' && $prefix === 'embed') {
             $model = 'bge-m3 (по умолчанию)';
-        } elseif ($model === '' && in_array('llm', $chain, true) && $prefix !== 'llm') {
-            $text = trim((string)($o['api_llmmodel'] ?? '')) ?: trim((string)($o['api_llmpresetmodel'] ?? ''));
+        } elseif ($model === '' && in_array($prefix, ['deal', 'assistant', 'light'], true)) {
+            $text = $get('api_llmmodel') ?: $get('api_llmpresetmodel');
             $model = $text !== '' ? $text.' (как у «Текст»)' : '';
         }
-        $provider = $prefix === 'asr' ? (string)($o['def_provideraudio'] ?? '') : (string)($o['def_providertext'] ?? '');
 
         return [
-            'provider' => $provider,
+            'provider' => $prefix === 'asr' ? $get('def_provideraudio') : $get('def_providertext'),
             'model' => $model,
-            'url' => self::cleanUrl($url),
-            'urlShared' => $own === '',
-            'key' => $key !== '',
-            'keyShared' => !$ownKey,
-            'urlFrom' => $own === '' && $url !== '' ? $from($urlFrom) : '',
-            'keyFrom' => $ownKey || $key === '' ? '' : $from($keyFrom),
-            'local' => self::isLocal($url),
+            'url' => self::cleanUrl($r['url']),
+            'urlShared' => $r['urlFrom'] !== '',
+            'key' => $r['key'] !== '',
+            'keyShared' => $r['keyFrom'] !== '',
+            'urlFrom' => $r['urlFrom'],
+            'keyFrom' => $r['keyFrom'],
+            'local' => self::isLocal($r['url']),
         ];
     }
 
@@ -208,8 +220,14 @@ final class Diag
         if (!is_dir($base)) {
             return $out;
         }
-        $it = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($base, \FilesystemIterator::SKIP_DOTS));
-        foreach ($it as $file) {
+        try {
+            $it = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($base, \FilesystemIterator::SKIP_DOTS));
+            $files = iterator_to_array($it, false);
+        } catch (\UnexpectedValueException) {
+            $out['missing'][] = '(install/js не читается)';
+            return $out;
+        }
+        foreach ($files as $file) {
             if (!$file->isFile() || $file->isLink()) {
                 continue;
             }
@@ -233,15 +251,20 @@ final class Diag
     /**
      * Путь обновления по версиям портала и целям выкатки.
      *
-     * @param array<string, string> $have модуль => версия на портале ('' — не установлен)
+     * @param array<string, ?string> $have модуль => версия на портале ('' — не установлен, null — не проверена)
      * @param array<string, string> $targets
-     * @return array{path: string, behind: list<string>, done: list<string>}
+     * @return array{path: string, behind: list<string>, done: list<string>, unknown: list<string>}
      */
     public static function rollout(array $have, array $targets, bool $syncCommand, bool $git): array
     {
         $behind = [];
         $done = [];
+        $unknown = [];
         foreach ($targets as $id => $target) {
+            if (array_key_exists($id, $have) && $have[$id] === null) {
+                $unknown[] = $id.' — версия не проверена, цель '.$target;
+                continue;
+            }
             $v = $have[$id] ?? '';
             if ($v !== '' && version_compare($v, $target, '>=')) {
                 $done[] = $id.' '.$v;
@@ -261,14 +284,16 @@ final class Diag
             $path = ($modules && $mcp ? 'модули и MCP' : ($mcp ? 'только MCP (make в /home/bitrix/mcp)' : 'только модули')).($modules ? ': '.$how : '');
         }
 
-        return ['path' => $path, 'behind' => $behind, 'done' => $done];
+        return ['path' => $path, 'behind' => $behind, 'done' => $done, 'unknown' => $unknown];
     }
 
     /** Убрать из строки известные значения секретов. @param string[] $secrets */
     public static function redact(string $text, array $secrets): string
     {
         foreach ($secrets as $s) {
-            if (strlen($s) >= 4) {
+            // короткие и служебные значения (true, 3000, Y) секретами не бывают — их замена ломала бы
+            // отчёт и JSON
+            if (strlen($s) >= 8 && !preg_match('/^(true|false|yes|no|on|off|null|\d+)$/i', $s)) {
                 $text = str_replace($s, '***', $text);
             }
         }
@@ -296,10 +321,13 @@ final class Diag
         $this->sections[$section][] = [$level, $what, $value];
     }
 
-    /** @return array{0: int, 1: string} */
+    /** @var array<string, array{0: int, 1: string}> */
+    private array $got = [];
+
+    /** Один запрос на адрес за прогон. @return array{0: int, 1: string} */
     private function get(string $url): array
     {
-        return $this->http === null ? [0, 'не проверялось (--no-network)'] : ($this->http)($url);
+        return $this->http === null ? [0, 'не проверялось (--no-network)'] : ($this->got[$url] ??= ($this->http)($url));
     }
 
     public function collect(): self
@@ -313,7 +341,7 @@ final class Diag
         $this->writable();
         $cron = $this->agents();
         $this->core();
-        $versions['shef.cowork'] = $cowork;
+        $versions['shef.cowork'] = $cowork === '' ? null : $cowork; // не проверено — не «отстаёт»
         $this->rolloutSection($versions, $jsOk, $cron);
 
         return $this;
@@ -340,12 +368,7 @@ final class Diag
     private function modules(): array
     {
         $s = 'Модули shef.*';
-        $dirs = [];
-        foreach (['/bitrix/modules', '/local/modules'] as $base) {
-            foreach (glob($this->root.$base.'/shef.*', GLOB_ONLYDIR) ?: [] as $dir) {
-                $dirs[basename($dir)] = $dir;
-            }
-        }
+        $dirs = $this->moduleDirs();
         foreach (self::MODULES as $id) {
             $dirs[$id] ??= '';
         }
@@ -395,7 +418,7 @@ final class Diag
             if (preg_match('/^\s*([A-Z0-9_]+)\s*=\s*(.*)$/', $line, $m)) {
                 $value = trim($m[2], " \t\"'\r");
                 $vars[$m[1]] = $value;
-                if (!in_array($m[1], self::MCP_ENV_SHOW, true) && $value !== '') {
+                if (self::isSecretName($m[1]) && $value !== '') {
                     $this->secrets[] = $value;
                 }
             }
@@ -407,7 +430,8 @@ final class Diag
         }
         $this->row($s, 'INFO', 'FILE_EXTRACT_KEY', ($vars['FILE_EXTRACT_KEY'] ?? '') !== '' ? 'задан' : 'не задан');
         $extract = (string)($vars['FILE_EXTRACT_URL'] ?? '');
-        if ($extract !== '' && self::isLocal($extract) && str_contains((string)parse_url($extract, PHP_URL_HOST), '.')) {
+        $host = (string)parse_url($extract, PHP_URL_HOST);
+        if ($extract !== '' && $host !== '' && (str_contains($host, '.') || $host === 'localhost')) {
             [$code] = $this->get(self::healthUrl($extract));
             $this->row($s, $code === 200 ? 'OK' : 'WARN', 'file-extract /health', $code === 200 ? 'отвечает' : 'HTTP '.$code);
         } elseif ($extract !== '') {
@@ -475,11 +499,25 @@ final class Diag
         }
     }
 
+    /** Каталоги модулей shef.*: local главнее bitrix, как у ядра. @return array<string, string> */
+    private function moduleDirs(): array
+    {
+        $dirs = [];
+        foreach (['/bitrix/modules', '/local/modules'] as $base) {
+            foreach (glob($this->root.$base.'/shef.*', GLOB_ONLYDIR) ?: [] as $dir) {
+                $dirs[basename($dir)] = $dir;
+            }
+        }
+        ksort($dirs);
+
+        return $dirs;
+    }
+
     private function js(): bool
     {
         $s = '/bitrix/js и install/js (#336)';
         $ok = true;
-        foreach (glob($this->root.'/bitrix/modules/shef.*', GLOB_ONLYDIR) ?: [] as $dir) {
+        foreach ($this->moduleDirs() as $dir) {
             if (!is_dir($dir.'/install/js')) {
                 continue;
             }
@@ -500,7 +538,7 @@ final class Diag
         $me = function_exists('posix_geteuid') ? posix_geteuid() : null;
         $memory = ($this->installed)('shef.toolsaimemory') ? (string)($this->opts('shef.toolsaimemory')['storage_path'] ?? '') : '';
         $paths = ['/bitrix/js/shef', '/bitrix/css', '/upload'];
-        foreach (glob($this->root.'/bitrix/modules/shef.*', GLOB_ONLYDIR) ?: [] as $dir) {
+        foreach ($this->moduleDirs() as $dir) {
             $paths[] = substr($dir, strlen($this->root));
         }
         foreach ($paths as $rel) {
@@ -527,15 +565,20 @@ final class Diag
         if ($depth === 0 || !is_dir($path)) {
             return $out;
         }
-        $it = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($path, \FilesystemIterator::SKIP_DOTS), \RecursiveIteratorIterator::SELF_FIRST);
-        $it->setMaxDepth($depth);
-        foreach ($it as $file) {
-            if (count($out) >= 5) {
-                break;
+        try {
+            // CATCH_GET_CHILD: нечитаемый подкаталог (чужой, 700) пропускается, обход идёт дальше
+            $it = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($path, \FilesystemIterator::SKIP_DOTS), \RecursiveIteratorIterator::SELF_FIRST, \RecursiveIteratorIterator::CATCH_GET_CHILD);
+            $it->setMaxDepth($depth);
+            foreach ($it as $file) {
+                if (count($out) >= 5) {
+                    break;
+                }
+                if (!$file->isLink() && @fileowner($file->getPathname()) !== $uid) {
+                    $out[] = substr($file->getPathname(), strlen($path) + 1);
+                }
             }
-            if (!$file->isLink() && @fileowner($file->getPathname()) !== $uid) {
-                $out[] = substr($file->getPathname(), strlen($path) + 1);
-            }
+        } catch (\UnexpectedValueException) {
+            $out[] = '(не читается)';
         }
 
         return $out;
@@ -582,15 +625,14 @@ final class Diag
             $this->data['core'] = null;
             return;
         }
-        $proc = function_exists('proc_open') ? proc_open([PHP_BINARY, $cli], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, null, ['DOCUMENT_ROOT' => $this->root]) : false;
+        // stderr — в никуда (полный канал не повесит процесс), окружение — своё плюс DOCUMENT_ROOT
+        $proc = function_exists('proc_open') ? proc_open([PHP_BINARY, $cli], [1 => ['pipe', 'w'], 2 => ['file', '/dev/null', 'w']], $pipes, null, ['DOCUMENT_ROOT' => $this->root] + getenv()) : false;
         if (!is_resource($proc)) {
             $this->row($s, 'WARN', 'check-core-changes', 'не запустился');
             return;
         }
         $out = (string)stream_get_contents($pipes[1]);
-        stream_get_contents($pipes[2]);
         fclose($pipes[1]);
-        fclose($pipes[2]);
         $rc = proc_close($proc);
         $lines = array_values(array_filter(array_map('trim', explode("\n", $out)), static fn (string $l): bool => (bool)preg_match('/^(OK|DRIFT|NO-MARKERS|NO-ORIGINAL)\b/', $l)));
         $this->row($s, $rc === 0 ? 'OK' : 'WARN', 'check-core-changes', 'код '.$rc.', файлов '.count($lines));
@@ -600,7 +642,7 @@ final class Diag
         $this->data['core'] = ['rc' => $rc, 'files' => $lines];
     }
 
-    /** @param array<string, string> $versions */
+    /** @param array<string, ?string> $versions */
     private function rolloutSection(array $versions, bool $jsOk, bool $cron): void
     {
         $s = 'Выкатка 10.11 (plan/ВЫКАТКА-2026-11-10.md)';
@@ -611,6 +653,9 @@ final class Diag
         }
         foreach ($r['behind'] as $l) {
             $this->row($s, 'WARN', 'обновить', $l);
+        }
+        foreach ($r['unknown'] as $l) {
+            $this->row($s, 'WARN', 'не проверено', $l);
         }
         $backup = glob(dirname($this->root).'/backup/toolsai-modules-*.tgz') ?: [];
         $this->row($s, $backup !== [] ? 'OK' : 'WARN', 'шаг 5.1 резервная копия', $backup !== [] ? basename((string)end($backup)) : 'нет в '.dirname($this->root).'/backup');
@@ -673,45 +718,55 @@ final class Diag
         );
     }
 
-    /** Точка входа одиночного файла: php diag.php [--json] [--no-network] [--root=…] [--mcp-dir=…] */
-    public static function main(array $argv): int
+    /** Значение --имя=… из argv. */
+    public static function arg(array $argv, string $name): ?string
     {
-        $opt = static function (string $name) use ($argv): ?string {
-            foreach ($argv as $a) {
-                if (str_starts_with($a, '--'.$name.'=')) {
-                    return substr($a, strlen($name) + 3);
-                }
+        foreach ($argv as $a) {
+            if (str_starts_with((string)$a, '--'.$name.'=')) {
+                return substr((string)$a, strlen($name) + 3);
             }
+        }
 
-            return null;
-        };
-        $root = rtrim((string)($opt('root') ?? getenv('DOCUMENT_ROOT') ?: ''), '/');
+        return null;
+    }
+
+    /** Корень сайта одиночного файла: --root, DOCUMENT_ROOT, каталог модуля, /home/bitrix/www; '' — не найден. */
+    public static function findRoot(array $argv): string
+    {
+        $root = rtrim((string)(self::arg($argv, 'root') ?? (getenv('DOCUMENT_ROOT') ?: '')), '/');
         if ($root === '') {
             // tools/diag.php внутри модуля: <корень>/bitrix/modules/shef.options/tools
             $guess = dirname(__DIR__, 4);
             $root = is_file($guess.'/bitrix/modules/main/include/prolog_before.php') ? $guess : '/home/bitrix/www';
         }
-        if (!is_file($root.'/bitrix/modules/main/include/prolog_before.php')) {
-            fwrite(STDERR, "Не найден корень сайта: укажите --root=/home/bitrix/www\n");
-            return 2;
-        }
-        $_SERVER['DOCUMENT_ROOT'] = $root;
-        foreach (['STOP_STATISTICS' => true, 'NO_KEEP_STATISTIC' => 'Y', 'NO_AGENT_STATISTIC' => 'Y', 'NOT_CHECK_PERMISSIONS' => true, 'NO_AGENT_CHECK' => true, 'BX_NO_ACCELERATOR_RESET' => true] as $c => $v) {
-            if (!defined($c)) {
-                define($c, $v);
-            }
-        }
-        (static function () use ($root): void {
-            global $DB, $APPLICATION, $USER;
-            require_once $root.'/bitrix/modules/main/include/prolog_before.php';
-        })();
-        $diag = self::forPortal($root, !in_array('--no-network', $argv, true), $opt('mcp-dir') ?? dirname($root).'/mcp')->collect();
+
+        return is_file($root.'/bitrix/modules/main/include/prolog_before.php') ? $root : '';
+    }
+
+    /** Отчёт одиночного файла после подъёма ядра. */
+    public static function main(array $argv, string $root): int
+    {
+        $diag = self::forPortal($root, !in_array('--no-network', $argv, true), self::arg($argv, 'mcp-dir') ?? dirname($root).'/mcp')->collect();
         echo in_array('--json', $argv, true) ? $diag->json().PHP_EOL : $diag->text();
 
         return 0;
     }
 }
 
+// Одиночный запуск: ядро поднимается на уровне файла (глобальная область, как у bitrix.php и
+// cron_events.php) — dbconn.php и init.php видят свои глобальные переменные.
 if (PHP_SAPI === 'cli' && isset($argv[0]) && realpath((string)$argv[0]) === __FILE__) {
-    exit(Diag::main($argv));
+    $shefDiagRoot = Diag::findRoot($argv);
+    if ($shefDiagRoot === '') {
+        fwrite(STDERR, "Не найден корень сайта: укажите --root=/home/bitrix/www\n");
+        exit(2);
+    }
+    $_SERVER['DOCUMENT_ROOT'] = $shefDiagRoot;
+    foreach (['STOP_STATISTICS' => true, 'NO_KEEP_STATISTIC' => 'Y', 'NO_AGENT_STATISTIC' => 'Y', 'NOT_CHECK_PERMISSIONS' => true, 'NO_AGENT_CHECK' => true] as $shefDiagConst => $shefDiagValue) {
+        if (!defined($shefDiagConst)) {
+            define($shefDiagConst, $shefDiagValue);
+        }
+    }
+    require_once $shefDiagRoot.'/bitrix/modules/main/include/prolog_before.php';
+    exit(Diag::main($argv, $shefDiagRoot));
 }
