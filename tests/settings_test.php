@@ -119,6 +119,7 @@ $commands = $settings['console']['value']['commands'] ?? [];
 Check::same('команды синхронизации модулей зарегистрированы', $commands, [
     'Shef\\Options\\Cli\\Command\\Modules\\SyncCommand',
     'Shef\\Options\\Cli\\Command\\Modules\\InstallOneCommand',
+    'Shef\\Options\\Cli\\Command\\Modules\\DiagCommand',
 ]);
 $missing = [];
 foreach ($commands as $class) {

@@ -73,6 +73,7 @@ return [
             'commands' => [
                 \Shef\Options\Cli\Command\Modules\SyncCommand::class,
                 \Shef\Options\Cli\Command\Modules\InstallOneCommand::class,
+                \Shef\Options\Cli\Command\Modules\DiagCommand::class,
             ],
         ],
         'readonly' => true,

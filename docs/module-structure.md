@@ -42,6 +42,7 @@ Composer разворачивает в целевой каталог **коре�
 | `options.php`, `options_conf.php`, `optionsconfig.php` | SHIP | страница настроек модуля |
 | `lib/` | SHIP | классы модуля, **имена файлов строго строчными**; ключевые узлы — ниже |
 | `tools/layout.php` | SHIP | CLI без ядра: собирает `install/layout.php` модулей `shef.*` и сверяет или пишет (`--write`) их файлы, блоки в общих файлах сайта и удаления в дереве портала |
+| `tools/diag.php` | SHIP | диагностика портала по модулям `shef.*` (только чтение, без секретов): самодостаточный файл для портала без shef.options и логика команды `shef:modules:diag` (`lib/cli/command/modules/diagcommand.php`) |
 | `lang/ru/` | SHIP | языковые файлы, зеркалят структуру `lib/` |
 | `README.md`, `CHANGELOG.md`, `LICENSE` | SHIP | |
 | `composer.json` | SHIP | манифест пакета |
