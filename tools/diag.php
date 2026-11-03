@@ -40,7 +40,7 @@ final class Diag
     public const FORMAT = 1;
 
     /** Версия скрипта: отличает старые копии у клиентов. */
-    public const VERSION = '1.0.0';
+    public const VERSION = '1.1.0';
 
     /** Выкатка, к которой относятся TARGETS. */
     public const RELEASE = '2026-11-10';
@@ -562,25 +562,46 @@ final class Diag
     }
 
     /**
-     * Лицензия shef.cowork (MCP-приложение) из опции SYS_mcp_license помощника: её пишет помощник
-     * по _meta.license ответа сервера (LicenseMeta). null — помощник срока ещё не получал.
+     * Лицензия shef.cowork (MCP-приложение) из опции SYS_mcp_license помощника — запись
+     * LicenseMeta::remember(): {status, expiresAt, server} по _meta.license ответа сервера.
+     * null — записи нет (сервер срока не сообщает или ответа ещё не было).
      *
-     * @return array{status: string, expiresAt: ?int, daysLeft: ?int}|null
+     * @return array{status: string, expiresAt: ?int, daysLeft: ?int, otherServer: bool}|null
      */
-    public static function coworkLicense(string $raw, int $now): ?array
+    public static function coworkLicense(string $raw, int $now, string $mcpUrl): ?array
     {
         $doc = json_decode($raw, true);
-        $doc = is_array($doc['license'] ?? null) ? $doc['license'] : $doc;
-        if (!is_array($doc) || !is_string($doc['status'] ?? null) || $doc['status'] === '') {
+        $status = is_array($doc) && is_string($doc['status'] ?? null) ? substr((string)preg_replace('/[^a-z_-]/i', '', $doc['status']), 0, 30) : '';
+        if ($status === '') {
             return null;
         }
         $expires = is_int($doc['expiresAt'] ?? null) ? $doc['expiresAt'] : null;
+        // помощник показывает запись только своего сервера (LicenseMeta::forAdmin)
+        $norm = static fn (string $u): string => (string)preg_replace('~/mcp$~', '', rtrim(strtolower(trim($u)), '/'));
+        $server = is_string($doc['server'] ?? null) ? $doc['server'] : '';
 
         return [
-            'status' => substr((string)preg_replace('/[^a-z_-]/i', '', $doc['status']), 0, 30),
+            'status' => $status,
             'expiresAt' => $expires,
-            'daysLeft' => $expires === null ? null : (int)ceil(($expires - $now) / 86400),
+            'daysLeft' => $expires === null ? null : max(0, (int)ceil(($expires - $now) / 86400)),
+            'otherServer' => $server !== '' && $norm($server) !== $norm($mcpUrl),
         ];
+    }
+
+    /** Уровень строки лицензии shef.cowork. */
+    public static function coworkLevel(?array $c, int $now): string
+    {
+        if ($c === null || $c['otherServer']) {
+            return 'WARN';
+        }
+        if ($c['status'] === 'unconfigured') {
+            return 'INFO';
+        }
+        if ($c['status'] !== 'active' || ($c['expiresAt'] !== null && $c['expiresAt'] <= $now)) {
+            return 'FAIL';
+        }
+
+        return $c['daysLeft'] !== null && $c['daysLeft'] <= 30 ? 'WARN' : 'OK';
     }
 
     private function license(): void
@@ -596,7 +617,7 @@ final class Diag
                 // срок лицензии — expires_at (нет — бессрочная); сертификат продлевается сам — valid_until
                 $until = is_array($st->payload) && is_int($st->payload['expires_at'] ?? null) ? $st->payload['expires_at'] : null;
                 $cert = is_array($st->payload) && is_int($st->payload['valid_until'] ?? null) ? $st->payload['valid_until'] : null;
-                $this->row($s, $st->mode === 'active' ? ($st->warning ? 'WARN' : 'OK') : ($st->isWorking() ? 'INFO' : 'FAIL'), 'shef.toolsai', $st->mode
+                $this->row($s, $st->mode === 'active' ? ($st->warning || $st->noLink ? 'WARN' : 'OK') : ($st->isWorking() ? 'INFO' : 'FAIL'), 'shef.toolsai', $st->mode
                     .($type !== '' ? ', '.$type : '')
                     .($until !== null ? ', до '.date('d.m.Y', $until) : ($st->mode === 'active' ? ', без срока' : ''))
                     .($cert !== null ? ', сертификат до '.date('d.m.Y', $cert) : '')
@@ -613,15 +634,22 @@ final class Diag
             return;
         }
         $o = $this->opts('shef.toolsaiassistant');
-        $c = self::coworkLicense((string)($o['sys_mcp_license'] ?? ''), time());
+        $mcp = trim((string)($o['agent_mcpurl'] ?? ''));
+        $now = time();
+        $c = self::coworkLicense((string)($o['sys_mcp_license'] ?? ''), $now, $mcp);
         $this->data['coworkLicense'] = $c;
-        if ($c === null) {
-            $this->row($s, 'WARN', 'shef.cowork (MCP)', 'срок неизвестен: помощник ещё не получал ответ сервера MCP');
+        if ($mcp === '') {
+            $this->row($s, 'INFO', 'shef.cowork (MCP)', 'MCP-сервер в помощнике не задан');
             return;
         }
-        $left = $c['daysLeft'];
-        $this->row($s, $c['status'] !== 'active' ? 'FAIL' : ($left !== null && $left <= 30 ? 'WARN' : 'OK'), 'shef.cowork (MCP)', $c['status']
-            .($c['expiresAt'] !== null ? ', до '.date('d.m.Y', $c['expiresAt']).', осталось дней: '.$left : ($c['status'] === 'active' ? ', без срока' : '')));
+        if ($c === null) {
+            $this->row($s, 'WARN', 'shef.cowork (MCP)', 'срок неизвестен: сервер его не сообщает (лицензирование выключено или сервер старше 1.7.0) или помощник ещё не обращался к серверу');
+            return;
+        }
+        $expired = $c['expiresAt'] !== null && $c['expiresAt'] <= $now;
+        $this->row($s, self::coworkLevel($c, $now), 'shef.cowork (MCP)', $c['status']
+            .($c['expiresAt'] !== null ? ', до '.date('d.m.Y', $c['expiresAt']).($expired ? ' — срок истёк' : ', осталось дней: '.$c['daysLeft']) : ($c['status'] === 'active' ? ', без срока' : ''))
+            .($c['otherServer'] ? ' — запись другого MCP-сервера, не текущего' : ''));
     }
 
     /** Каталоги модулей shef.*: local главнее bitrix, как у ядра. @return array<string, string> */

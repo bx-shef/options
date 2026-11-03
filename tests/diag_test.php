@@ -80,10 +80,18 @@ Check::same('только MCP', Diag::rollout(['shef.options' => '3.9.0', 'shef.
 Check::same('портал в git', str_contains(Diag::rollout(['shef.options' => '3.8.0', 'shef.toolsai' => '1.9.0'], $t, true, true)['path'], 'tools/layout.php'), true);
 
 $now = 1_800_000_000;
-Check::same('лицензия shef.cowork: действует, срок и дни', Diag::coworkLicense('{"status":"active","expiresAt":'.($now + 10 * 86400).',"server":"x"}', $now), ['status' => 'active', 'expiresAt' => $now + 10 * 86400, 'daysLeft' => 10]);
-Check::same('лицензия shef.cowork: вложенная запись license, бессрочная', Diag::coworkLicense('{"license":{"status":"active","expiresAt":null}}', $now), ['status' => 'active', 'expiresAt' => null, 'daysLeft' => null]);
-Check::same('лицензия shef.cowork: нет записи — null', [Diag::coworkLicense('', $now), Diag::coworkLicense('{"status":""}', $now)], [null, null]);
-Check::same('лицензия shef.cowork: статус без мусора', Diag::coworkLicense('{"status":"expired<script>"}', $now)['status'], 'expiredscript');
+$mu = 'https://p.ru/mcp-ai/mcp';
+$lic = static fn (string $status, ?int $exp, string $server = 'https://p.ru/mcp-ai/mcp'): string => (string)json_encode(['status' => $status, 'expiresAt' => $exp, 'server' => $server]);
+Check::same('лицензия shef.cowork: действует, срок и дни', Diag::coworkLicense($lic('active', $now + 10 * 86400), $now, $mu), ['status' => 'active', 'expiresAt' => $now + 10 * 86400, 'daysLeft' => 10, 'otherServer' => false]);
+Check::same('лицензия shef.cowork: нет записи или пустой статус — null', [Diag::coworkLicense('', $now, $mu), Diag::coworkLicense('{"status":"активна"}', $now, $mu)], [null, null]);
+Check::same('лицензия shef.cowork: статус без мусора, истёкшая — 0 дней', [Diag::coworkLicense($lic('expired<x>', $now - 86400 * 5), $now, $mu)['status'], Diag::coworkLicense($lic('expired', $now - 86400 * 5), $now, $mu)['daysLeft']], ['expiredx', 0]);
+Check::same('лицензия shef.cowork: запись другого сервера', Diag::coworkLicense($lic('active', null, 'https://old.ru/mcp'), $now, $mu)['otherServer'], true);
+Check::same('лицензия shef.cowork: тот же сервер без /mcp', Diag::coworkLicense($lic('active', null, 'https://p.ru/mcp-ai'), $now, $mu)['otherServer'], false);
+$lv = static fn (string $status, ?int $exp, string $server = 'https://p.ru/mcp-ai/mcp'): string => Diag::coworkLevel(Diag::coworkLicense($lic($status, $exp, $server), $now, $mu), $now);
+Check::same('уровни лицензии shef.cowork', [
+    $lv('active', null), $lv('active', $now + 90 * 86400), $lv('active', $now + 10 * 86400), $lv('active', $now - 60),
+    $lv('expired', null), $lv('unconfigured', null), $lv('active', null, 'https://old.ru/mcp'), Diag::coworkLevel(null, $now),
+], ['OK', 'OK', 'WARN', 'FAIL', 'FAIL', 'INFO', 'WARN', 'WARN']);
 Check::group('отчёт по порталу-заглушке');
 $p = sys_get_temp_dir().'/shef-diag-'.getmypid();
 $www = $p.'/www';
