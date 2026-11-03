@@ -1,6 +1,7 @@
 # change log
 
 ## Не выпущено
+* Документация для разработчиков модулей линейки: `docs/dev/README.md` (вход), `docs/dev/settings.md` (страница настроек на shef.options), `docs/dev/installer.md` (канон установщика, `install/layout.php`, `shef:modules:sync`); `docs/9_traitlist.md` — `TraitList\Log`, `Tools\LogCollection`, `Uf\Entity`, `Uf\IEntity`; `docs/5_utils.md` — `getTextParserToHtml`, `signComponentParams`, `unsignComponentParams`; `docs/3_options.md` — `Tab`, `AOption`, `Ui\SettingsForm` (лента: нет)
 
 ## 3.10.0 — 2026-11-03
 * Диагностика (bx-shef/toolsai-mp3-txt#33): в разделе «Направления shef.toolsai» — «crm пределы записи» (опции crm `ai_integration_audio_max_call_time`, `ai_integration_audiofile_max_size`; при своём сервере распознавания меньше 2 ч или 64 МБ — WARN, как в отчёте «Проверить и включить» shef.toolsai) и «php memory_limit» — этого процесса и CLI (`php -r`: агенты и cron), меньше 512M — WARN; в JSON — `data.memoryLimit`. Версия скрипта 1.2.0. Тест `tests/diag_test.php` (проверен мутациями)

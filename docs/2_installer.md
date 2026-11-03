@@ -1,6 +1,6 @@
 # [`\Shef\Options\Installator`] Installer
 
-Для облегчения установок.
+Для облегчения установок. Канон `install/index.php`, раскладка `install/layout.php` и `shef:modules:sync` — [docs/dev/installer.md](dev/installer.md).
 
 ## [`Installator`] Интерфейсы
 |                 Название | Описание                                                                             |
