@@ -613,3 +613,7 @@ Issue #43 нашёл один путь: `RecursiveDirectoryIterator` на отс
 - Не используй устаревшие API (старое ядро `C*`-классов), если в D7 есть замена. Исключение: проект явно требует старое API.
 - В ответе указывай путь к файлу документации, на который опирался.
 - Обновление коробки из консоли — `php bitrix.php update:modules` (`framework-docs/pages/framework/console-commands.md`).
+
+## Разовые контейнеры проверок
+
+- Любые разовые `docker run` для проверок (Playwright, node, php…) — только через `../stand/tools/pw-run.sh <проект> <задача> [опции docker run] -- <команда>` (bx-shef/toolsai-stand, клон рядом). Образ Playwright — по умолчанию, другой — `PW_IMAGE=node:22`. Прямой `docker run` для проверок не использовать: обёртка задаёт лимиты памяти и CPU, shm 1 ГБ, --init, отключает дампы WSL, даёт имя, метку project и таймаут (PW_TIMEOUT). Не больше двух прогонов одновременно. Пример: `PW_TIMEOUT=900 ../stand/tools/pw-run.sh <репо> check -v D:/tmp/chk:/w -w /w -- bash -c './build.sh --check'`.
