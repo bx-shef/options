@@ -208,4 +208,11 @@ Check::same('--fast: check-core-changes не запускается', str_contai
 Check::same('сеть по умолчанию — 20 с', Diag::NET_BUDGET, 20.0);
 
 exec('rm -rf '.escapeshellarg($p));
+Check::group('пределы записи звонка (toolsai-mp3-txt#33)');
+Check::same('свой сервер, умолчания ядра — WARN', Diag::crmAudioLimits('', '', true)[0], 'WARN');
+Check::same('свой сервер, подняты — OK', Diag::crmAudioLimits('7200', (string)(64 * 1024 * 1024), true), ['OK', 'ядро отдаёт звонки до 7200 с и 64 МБ']);
+Check::same('не свой сервер — INFO', Diag::crmAudioLimits('', '', false)[0], 'INFO');
+Check::same('memory_limit', [Diag::memoryLevel('256M')[0], Diag::memoryLevel('512M')[0], Diag::memoryLevel('-1')[0], Diag::memoryLevel('1G')[0]], ['WARN', 'OK', 'OK', 'OK']);
+Check::same('memoryBytes', [Diag::memoryBytes('131072k'), Diag::memoryBytes('536870912'), Diag::memoryBytes('')], [128 * 1024 ** 2, 536870912, null]);
+
 Check::finish();
