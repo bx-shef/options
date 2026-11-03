@@ -341,7 +341,6 @@ final class Diag
         return ['path' => $path, 'route' => $route, 'method' => $method, 'behind' => $behind, 'done' => $done, 'unknown' => $unknown];
     }
 
-    /** Убрать из строки известные значения секретов. @param string[] $secrets */
     /** memory_limit php.ini в байтах; -1 и пусто — без предела (null). */
     public static function memoryBytes(string $ini): ?int
     {
@@ -388,6 +387,7 @@ final class Diag
         return [$ok ? 'OK' : 'WARN', ($ini !== '' ? $ini : '—').($ok ? '' : ' — для записей до 64 МБ нужно от 512M')];
     }
 
+    /** Убрать из строки известные значения секретов. @param string[] $secrets */
     public static function redact(string $text, array $secrets): string
     {
         foreach ($secrets as $s) {
