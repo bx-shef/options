@@ -30,6 +30,7 @@ class DiagCommand extends Command
             ->addOption('no-network', null, InputOption::VALUE_NONE, 'Без запросов к /health и локальным моделям')
             ->addOption('mcp-dir', null, InputOption::VALUE_REQUIRED, 'Каталог сервера MCP (по умолчанию <родитель корня>/mcp)')
             ->addOption('targets', null, InputOption::VALUE_REQUIRED, 'Цели выкатки JSON: {"release": "…", "targets": {"shef.toolsai": "1.91.0"}}')
+            ->addOption('fast', null, InputOption::VALUE_NONE, 'Без обхода владельцев вглубь и без check-core-changes')
             ->addOption('allow-root', null, InputOption::VALUE_NONE, 'Разрешить запуск от root (права и владельцы покажутся для root)');
     }
 
@@ -58,7 +59,8 @@ class DiagCommand extends Command
             !$input->getOption('no-network'),
             (string)($input->getOption('mcp-dir') ?: dirname($root).'/mcp'),
             $loaded[0] ?? null,
-            $loaded[1] ?? Diag::RELEASE
+            $loaded[1] ?? Diag::RELEASE,
+            (bool)$input->getOption('fast')
         )->collect();
         $output->write($input->getOption('json') ? $diag->json().PHP_EOL : $diag->text(), false, OutputInterface::OUTPUT_RAW);
 

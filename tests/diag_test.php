@@ -168,5 +168,30 @@ Check::same('--no-network: shef.cowork «не проверено», не в «о
 $d = Diag::direction(['api_llmbaseurl' => 'https://api.deepseek.com/v1/', 'api_llmapikey' => 'T', 'api_assistantbaseurl' => 'https://API.deepseek.com/v1'], 'assistant');
 Check::same('свой адрес, совпадающий с «Текст», — ключ наследуется', [$d['key'], $d['keyFrom']], [true, 'как у «Текст»']);
 
+Check::group('лимит сети и --fast');
+$slow = [];
+$budget = new Diag(
+    $www,
+    static fn (string $id): array => $opts[$id] ?? [],
+    static fn (string $id): bool => in_array($id, ['shef.toolsai', 'shef.toolsaiassistant'], true),
+    static function (string $url) use (&$slow): array {
+        $slow[] = $url;
+        usleep(60000);
+        return [200, '{}'];
+    },
+    '',
+    null,
+    Diag::TARGETS,
+    Diag::RELEASE,
+    0.1,
+);
+$budgetText = $budget->collect()->text();
+Check::same('лимит 0.1 с при 0.06 с на запрос — запросов 2', count($slow), 2);
+Check::same('остальное помечено «лимит сети исчерпан»', str_contains($budgetText, 'лимит сети 0.1 с исчерпан'), true);
+mkdir($www.'/bitrix/js/shef/deep/a/b', 0755, true);
+$fast = new Diag($www, static fn (string $id): array => [], static fn (string $id): bool => false, null, '', null, Diag::TARGETS, Diag::RELEASE, Diag::NET_BUDGET, true);
+Check::same('--fast: check-core-changes не запускается', str_contains($fast->collect()->text(), 'не проверялось (--fast)'), true);
+Check::same('сеть по умолчанию — 20 с', Diag::NET_BUDGET, 20.0);
+
 exec('rm -rf '.escapeshellarg($p));
 Check::finish();

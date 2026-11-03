@@ -85,6 +85,7 @@ php bitrix.php shef:modules:diag --json          # JSON
 php bitrix.php shef:modules:diag --no-network    # без запросов к /health и локальным моделям
 php bitrix.php shef:modules:diag --mcp-dir=/home/bitrix/mcp    # каталог MCP (по умолчанию <родитель корня>/mcp)
 php bitrix.php shef:modules:diag --targets=targets.json        # свои цели выкатки
+php bitrix.php shef:modules:diag --fast          # без обхода владельцев вглубь и без check-core-changes
 ```
 
 Портал без shef.options — тот же отчёт одним файлом `tools/diag.php` (скопировать на сервер, PHP 8.1+):
@@ -95,7 +96,8 @@ php diag.php [--json] [--no-network] [--root=/home/bitrix/www] [--mcp-dir=…] [
 
 `--root` нужен, если файл лежит вне `bitrix/modules/shef.options/tools` и корень сайта — не
 `/home/bitrix/www` (порядок поиска: `--root`, `DOCUMENT_ROOT`, каталог модуля, `/home/bitrix/www`).
-Не поднялось ядро (нет базы, сломан `init.php`) — печатаются версии модулей с диска.
+Не поднялось ядро (нет базы, сломан `init.php`) — печатаются версии модулей с диска. Сеть: один
+запрос на адрес, 4 с на запрос, всего не дольше 20 с — остальное «не проверялось».
 
 Запускать от пользователя веб-сервера (на BitrixVM — `bitrix`), без sudo; от root — отказ
 (`--allow-root`). Разделы:

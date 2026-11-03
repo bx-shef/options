@@ -8,6 +8,8 @@ declare(strict_types=1);
  *   php bitrix/bitrix.php shef:modules:diag [--json] [--no-network] [--mcp-dir=…] [--targets=…]
  *   php diag.php [--json] [--no-network] [--root=/home/bitrix/www] [--mcp-dir=…] [--targets=…]
  *
+ * --fast — без обхода владельцев файлов вглубь и без check-core-changes. Сеть: один запрос на
+ * адрес, 4 с на запрос, всего не дольше Diag::NET_BUDGET (20 с) — остальное «не проверялось».
  * --targets=файл.json — цели выкатки {"release": "…", "targets": {"shef.toolsai": "1.91.0", …}}
  * вместо зашитых (Diag::TARGETS, выкатка 10.11.2026). Корень сайта одиночного файла: --root,
  * DOCUMENT_ROOT, каталог модуля (файл лежит в bitrix/modules/shef.options/tools), /home/bitrix/www.
@@ -42,6 +44,11 @@ final class Diag
 
     /** Выкатка, к которой относятся TARGETS. */
     public const RELEASE = '2026-11-10';
+
+    /** Общий лимит времени на сетевые проверки за прогон, секунд. */
+    public const NET_BUDGET = 20.0;
+
+    private float $netSpent = 0.0;
 
     /** Модули линейки, о которых отчёт говорит, даже если их нет на диске. */
     public const MODULES = [
@@ -102,6 +109,8 @@ final class Diag
         private readonly ?\Closure $endpoint = null,
         private readonly array $targets = self::TARGETS,
         private readonly string $release = self::RELEASE,
+        private readonly float $netBudget = self::NET_BUDGET,
+        private readonly bool $fast = false,
     ) {
         $this->started = microtime(true);
     }
@@ -372,7 +381,20 @@ final class Diag
     /** Один запрос на адрес за прогон. @return array{0: int, 1: string} */
     private function get(string $url): array
     {
-        return $this->http === null ? [0, 'не проверялось (--no-network)'] : ($this->got[$url] ??= ($this->http)($url));
+        if ($this->http === null) {
+            return [0, 'не проверялось (--no-network)'];
+        }
+        if (isset($this->got[$url])) {
+            return $this->got[$url];
+        }
+        if ($this->netSpent >= $this->netBudget) {
+            return [0, 'не проверялось: лимит сети '.$this->netBudget.' с исчерпан'];
+        }
+        $t = microtime(true);
+        $this->got[$url] = ($this->http)($url);
+        $this->netSpent += microtime(true) - $t;
+
+        return $this->got[$url];
     }
 
     public function collect(): self
@@ -605,7 +627,8 @@ final class Diag
                 $this->row($s, 'INFO', $rel, 'нет');
                 continue;
             }
-            $foreign = $me === null ? [] : self::foreign($path, $me, $rel === '/upload' ? 0 : 6);
+            // --fast: только сам каталог, без обхода владельцев вглубь
+            $foreign = $me === null ? [] : self::foreign($path, $me, $rel === '/upload' || $this->fast ? 0 : 6);
             $w = is_writable($path);
             $this->row($s, $w && $foreign === [] ? 'OK' : 'FAIL', $rel, ($w ? 'запись есть' : 'НЕТ записи').($foreign !== [] ? ', чужие файлы: '.implode(', ', $foreign) : ''));
         }
@@ -678,6 +701,11 @@ final class Diag
 
     private function core(): void
     {
+        if ($this->fast) {
+            $this->row('Правки ядра (shef.haschangefiles)', 'INFO', 'check-core-changes', 'не проверялось (--fast)');
+            $this->data['core'] = null;
+            return;
+        }
         $s = 'Правки ядра (shef.haschangefiles)';
         $cli = $this->root.'/bitrix/modules/shef.haschangefiles/cli/check-core-changes.php';
         if (!is_file($cli)) {
@@ -762,7 +790,7 @@ final class Diag
     }
 
     /** Сборщик на поднятом ядре Битрикса. */
-    public static function forPortal(string $root, bool $network, string $mcpDir, ?array $targets = null, string $release = self::RELEASE): self
+    public static function forPortal(string $root, bool $network, string $mcpDir, ?array $targets = null, string $release = self::RELEASE, bool $fast = false): self
     {
         $endpoint = static function (string $prefix): ?array {
             try {
@@ -815,6 +843,8 @@ final class Diag
             $endpoint,
             $targets ?? self::TARGETS,
             $release,
+            self::NET_BUDGET,
+            $fast,
         );
     }
 
@@ -874,7 +904,7 @@ final class Diag
             fwrite(STDERR, "--targets: файл не читается или не в формате {\"release\": \"…\", \"targets\": {\"shef.toolsai\": \"1.91.0\"}}\n");
             return 2;
         }
-        $diag = self::forPortal($root, !in_array('--no-network', $argv, true), self::arg($argv, 'mcp-dir') ?? dirname($root).'/mcp', $loaded[0] ?? null, $loaded[1] ?? self::RELEASE)->collect();
+        $diag = self::forPortal($root, !in_array('--no-network', $argv, true), self::arg($argv, 'mcp-dir') ?? dirname($root).'/mcp', $loaded[0] ?? null, $loaded[1] ?? self::RELEASE, in_array('--fast', $argv, true))->collect();
         echo in_array('--json', $argv, true) ? $diag->json().PHP_EOL : $diag->text();
 
         return 0;
