@@ -1,5 +1,7 @@
 # [`\Shef\Options\Main\Options`] Опции настроек модуля
 
+Поля собираются во вкладки `Options\Tab` (базовый класс поля — `Options\AOption`) в `options_conf.php` модуля; как строится страница — [docs/dev/settings.md](dev/settings.md). Карточный вид страницы — `\Shef\Options\Ui\SettingsForm`: поля `Checkbox`, `Text`, `NumberInt`, `NumberFloat`, `TextArea`, `Enum*`, `RowInfo`.
+
 Поддерживает следующие типы:
 
 |                          Класс | Описание                                                                                                      |

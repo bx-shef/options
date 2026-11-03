@@ -302,6 +302,7 @@ if(!\Bitrix\Main\ModuleManager::isModuleInstalled('shef.options'))
 * [Паттерны](https://github.com/bx-shef/options/blob/main/docs/7_pattern.md)
 * [Тестирование](https://github.com/bx-shef/options/blob/main/docs/8_tests.md)
 * [Набор трейтов](https://github.com/bx-shef/options/blob/main/docs/9_traitlist.md)
+* [Для разработчиков модулей линейки](https://github.com/bx-shef/options/blob/main/docs/dev/README.md)
 * [Примеры](https://github.com/bx-shef/options/blob/main/examples/README.md) — запускаемые, в том числе на вашем портале
 
 Весь репозиторий — [bx-shef/options](https://github.com/bx-shef/options).
