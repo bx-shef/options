@@ -28,12 +28,20 @@ Check::same('частная сеть — локальный', Diag::isLocal('htt
 Check::same('имя docker-сервиса — локальный', Diag::isLocal('http://file-extract:3000'), true);
 Check::same('внешний — не локальный', Diag::isLocal('https://api.deepseek.com/v1'), false);
 Check::same('health MCP', Diag::healthUrl('https://mcp.x.ru/mcp?t=1'), 'https://mcp.x.ru/health');
+Check::same('health MCP за префиксом прокси', Diag::healthUrl('https://portal.ru/mcp-ai'), 'https://portal.ru/mcp-ai/health');
+Check::same('health сервиса /v1', Diag::healthUrl('http://toolsai-embed:8000/v1'), 'http://toolsai-embed:8000/health');
+$d = Diag::direction(['api_baseurl' => 'http://asr:8000/v1', 'api_apikey' => 'A', 'api_llmbaseurl' => 'https://api.deepseek.com/v1', 'api_llmapikey' => 'T'], 'light');
+Check::same('лёгкая без своего — как у текста, не общий', [$d['url'], $d['urlShared'], $d['urlFrom'], $d['keyFrom']], ['https://api.deepseek.com/v1', true, 'как у «Текст»', 'как у «Текст»']);
+$d = Diag::direction(['api_baseurl' => 'http://asr:8000/v1', 'api_llmbaseurl' => 'https://api.deepseek.com/v1'], 'asr');
+Check::same('распознавание без своего — общий', $d['url'], 'http://asr:8000/v1');
 
 $d = Diag::direction(['API_baseurl' => 'https://api.a.ru/v1', 'API_apikey' => 'S', 'API_lightmodel' => 'mini', 'DEF_providertext' => 'openai'], 'light');
 Check::same('направление без своего адреса — общий', [$d['url'], $d['urlShared'], $d['key'], $d['keyShared'], $d['model']], ['https://api.a.ru/v1', true, true, true, 'mini']);
 $d = Diag::direction(['API_embedbaseurl' => 'http://127.0.0.1:8080/v1', 'API_embedpresetmodel' => 'bge-m3'], 'embed');
 Check::same('своё направление, без ключа, локальное', [$d['urlShared'], $d['key'], $d['local'], $d['model']], [false, false, true, 'bge-m3']);
 
+$d = Diag::direction(['api_lightbaseurl' => 'http://toolsai-light:8000/v1', 'api_lightmodel' => 'qwen'], 'light');
+Check::same('имена настроек строчными, как хранит ядро', [$d['url'], $d['model'], $d['urlShared']], ['http://toolsai-light:8000/v1', 'qwen', false]);
 $t = ['shef.options' => '3.9.0', 'shef.toolsai' => '1.91.0', 'shef.cowork' => '1.11.0'];
 Check::same('всё на цели', Diag::rollout(['shef.options' => '3.9.0', 'shef.toolsai' => '1.91.1', 'shef.cowork' => '1.11.0'], $t, true, false)['path'], 'обновление не нужно: всё на целевых версиях');
 Check::same('нет toolsai — новая установка', str_starts_with(Diag::rollout([], $t, false, false)['path'], 'новая установка'), true);
@@ -71,7 +79,7 @@ $opts = [
         'API_embedbaseurl' => 'http://127.0.0.1:8080/v1', 'API_embedmodel' => 'bge-m3',
         'API_lightmodel' => $secret,
     ],
-    'shef.toolsaiassistant' => ['AGENT_coworkurl' => 'https://mcp.portal.ru/mcp?key=zzz'],
+    'shef.toolsaiassistant' => ['agent_coworkurl' => 'https://landing.example/agent.html', 'agent_mcpurl' => 'https://mcp.portal.ru/mcp?key=zzz'],
 ];
 $calls = [];
 $diag = new Diag(

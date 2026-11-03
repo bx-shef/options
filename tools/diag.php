@@ -127,7 +127,8 @@ final class Diag
     {
         $clean = self::cleanUrl($url);
 
-        return $clean === '' ? '' : (string)preg_replace('~^([a-z]+://[^/]+).*$~', '$1', $clean).'/health';
+        // https://портал/mcp-ai/mcp → https://портал/mcp-ai/health: префикс прокси сохраняется
+        return $clean === '' ? '' : (string)preg_replace('~/(mcp|v1)?/?$~', '', $clean).'/health';
     }
 
     /**
@@ -135,26 +136,47 @@ final class Diag
      * API_apikey). Ключ — только «задан».
      *
      * @param array<string, string> $o
-     * @return array{provider: string, model: string, url: string, urlShared: bool, key: bool, keyShared: bool, local: bool}
+     * @return array{provider: string, model: string, url: string, urlShared: bool, key: bool, keyShared: bool, urlFrom: string, keyFrom: string, local: bool}
      */
     public static function direction(array $o, string $prefix): array
     {
-        $own = trim((string)($o['API_'.$prefix.'baseurl'] ?? ''));
-        $url = $own !== '' ? $own : trim((string)($o['API_baseurl'] ?? ''));
-        $ownKey = (string)($o['API_'.$prefix.'apikey'] ?? '') !== '';
-        $model = trim((string)($o['API_'.$prefix.'model'] ?? ''));
-        if ($model === '') {
-            $model = trim((string)($o['API_'.$prefix.'presetmodel'] ?? ''));
+        $o = array_change_key_case($o); // ядро хранит имена настроек строчными (api_llmmodel)
+        // Откат как в Config shef.toolsai: распознавание и поиск — на общие API_baseurl/API_apikey;
+        // текст — свой, иначе общий; сделки, помощник, лёгкая и эмбеддинги — свой, иначе как у текста.
+        $chain = in_array($prefix, ['asr', 'web', 'llm'], true) ? [$prefix, ''] : [$prefix, 'llm', ''];
+        $pick = static function (string $field) use ($o, $chain): array {
+            foreach ($chain as $i => $p) {
+                $v = trim((string)($o['api_'.$p.$field] ?? ''));
+                if ($v !== '') {
+                    return [$v, $i];
+                }
+            }
+
+            return ['', 0];
+        };
+        [$url, $urlFrom] = $pick('baseurl');
+        [$key, $keyFrom] = $pick('apikey');
+        $own = $urlFrom === 0 ? $url : '';
+        $ownKey = $keyFrom === 0 && $key !== '';
+        $from = static fn (int $i): string => $i === 0 ? '' : ($chain[$i] === 'llm' ? 'как у «Текст»' : 'общий');
+        $model = trim((string)($o['api_'.$prefix.'model'] ?? '')) ?: trim((string)($o['api_'.$prefix.'presetmodel'] ?? ''));
+        if ($model === '' && $prefix === 'embed') {
+            $model = 'bge-m3 (по умолчанию)';
+        } elseif ($model === '' && in_array('llm', $chain, true) && $prefix !== 'llm') {
+            $text = trim((string)($o['api_llmmodel'] ?? '')) ?: trim((string)($o['api_llmpresetmodel'] ?? ''));
+            $model = $text !== '' ? $text.' (как у «Текст»)' : '';
         }
-        $provider = $prefix === 'asr' ? (string)($o['DEF_provideraudio'] ?? '') : (string)($o['DEF_providertext'] ?? '');
+        $provider = $prefix === 'asr' ? (string)($o['def_provideraudio'] ?? '') : (string)($o['def_providertext'] ?? '');
 
         return [
             'provider' => $provider,
             'model' => $model,
             'url' => self::cleanUrl($url),
             'urlShared' => $own === '',
-            'key' => $ownKey || (string)($o['API_apikey'] ?? '') !== '',
+            'key' => $key !== '',
             'keyShared' => !$ownKey,
+            'urlFrom' => $own === '' && $url !== '' ? $from($urlFrom) : '',
+            'keyFrom' => $ownKey || $key === '' ? '' : $from($keyFrom),
             'local' => self::isLocal($url),
         ];
     }
@@ -259,7 +281,7 @@ final class Diag
     /** @return array<string, string> */
     private function opts(string $module): array
     {
-        $o = ($this->options)($module);
+        $o = array_change_key_case(($this->options)($module)); // имена в ядре — строчными
         foreach ($o as $name => $value) {
             if (self::isSecretName((string)$name) && is_string($value) && $value !== '') {
                 $this->secrets[] = $value;
@@ -349,10 +371,11 @@ final class Diag
     {
         $s = 'shef.cowork и file-extract';
         $o = ($this->installed)('shef.toolsaiassistant') ? $this->opts('shef.toolsaiassistant') : [];
-        $raw = trim((string)($o['AGENT_coworkurl'] ?? '')) ?: trim((string)($o['AGENT_mcpurl'] ?? ''));
+        // agent_coworkurl — страница установки и покупки, не сервер; адрес сервера — agent_mcpurl
+        $raw = trim((string)($o['agent_mcpurl'] ?? ''));
         $version = '';
         if ($raw === '') {
-            $this->row($s, 'WARN', 'адрес MCP', 'не задан в помощнике (AGENT_coworkurl / AGENT_mcpurl)');
+            $this->row($s, 'WARN', 'адрес MCP', 'не задан в помощнике («Адрес MCP-сервера», AGENT_mcpurl)');
         } else {
             $this->row($s, 'INFO', 'адрес MCP', self::cleanUrl($raw));
             [$code, $body] = $this->get(self::healthUrl($raw));
@@ -402,7 +425,7 @@ final class Diag
             return;
         }
         $o = $this->opts('shef.toolsai');
-        $this->row($s, 'INFO', 'провайдер текст / аудио', ($o['DEF_providertext'] ?? '?').' / '.($o['DEF_provideraudio'] ?? '?'));
+        $this->row($s, 'INFO', 'провайдер текст / аудио', ($o['def_providertext'] ?? '?').' / '.($o['def_provideraudio'] ?? '?'));
         foreach (self::DIRECTIONS as $title => $prefix) {
             $d = self::direction($o, $prefix);
             $this->data['directions'][$prefix] = $d;
@@ -410,11 +433,12 @@ final class Diag
                 'модель %s, адрес %s%s, ключ %s%s',
                 $d['model'] !== '' ? $d['model'] : '—',
                 $d['url'] !== '' ? $d['url'] : '—',
-                $d['urlShared'] ? ' (общий)' : '',
+                $d['urlFrom'] !== '' ? ' ('.$d['urlFrom'].')' : '',
                 $d['key'] ? 'задан' : 'не задан',
-                $d['key'] && $d['keyShared'] ? ' (общий)' : ''
+                $d['keyFrom'] !== '' ? ' ('.$d['keyFrom'].')' : ''
             );
-            $level = ($prefix === 'light' || $prefix === 'embed') && $d['model'] === '' ? 'WARN' : 'INFO';
+            // лёгкая и эмбеддинги без своего адреса идут на движок «Текст» (bge-m3 он может не знать)
+            $level = in_array($prefix, ['light', 'embed'], true) && $d['urlFrom'] !== '' ? 'WARN' : 'INFO';
             $this->row($s, $level, $title, $value);
             // Свои сервисы лёгкой модели и эмбеддингов (toolsai-light, toolsai-embed — по образцу
             // file-extract): /health и версия. Общий адрес — это движок «Текст», его не опрашиваем.
@@ -474,7 +498,7 @@ final class Diag
     {
         $s = 'Права на запись';
         $me = function_exists('posix_geteuid') ? posix_geteuid() : null;
-        $memory = ($this->installed)('shef.toolsaimemory') ? (string)($this->opts('shef.toolsaimemory')['STORAGE_path'] ?? '') : '';
+        $memory = ($this->installed)('shef.toolsaimemory') ? (string)($this->opts('shef.toolsaimemory')['storage_path'] ?? '') : '';
         $paths = ['/bitrix/js/shef', '/bitrix/css', '/upload'];
         foreach (glob($this->root.'/bitrix/modules/shef.*', GLOB_ONLYDIR) ?: [] as $dir) {
             $paths[] = substr($dir, strlen($this->root));
@@ -604,7 +628,7 @@ final class Diag
         foreach ($this->sections as $title => $rows) {
             $out .= PHP_EOL.$title.PHP_EOL;
             foreach ($rows as [$level, $what, $value]) {
-                $out .= sprintf('  %-5s %-34s %s', $level, $what, $value).PHP_EOL;
+                $out .= '  '.str_pad($level, 6).$what.str_repeat(' ', max(1, 35 - mb_strlen($what))).$value.PHP_EOL;
             }
         }
 
