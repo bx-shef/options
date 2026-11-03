@@ -561,22 +561,67 @@ final class Diag
         }
     }
 
+    /**
+     * Лицензия shef.cowork (MCP-приложение) из опции SYS_mcp_license помощника: её пишет помощник
+     * по _meta.license ответа сервера (LicenseMeta). null — помощник срока ещё не получал.
+     *
+     * @return array{status: string, expiresAt: ?int, daysLeft: ?int}|null
+     */
+    public static function coworkLicense(string $raw, int $now): ?array
+    {
+        $doc = json_decode($raw, true);
+        $doc = is_array($doc['license'] ?? null) ? $doc['license'] : $doc;
+        if (!is_array($doc) || !is_string($doc['status'] ?? null) || $doc['status'] === '') {
+            return null;
+        }
+        $expires = is_int($doc['expiresAt'] ?? null) ? $doc['expiresAt'] : null;
+
+        return [
+            'status' => substr((string)preg_replace('/[^a-z_-]/i', '', $doc['status']), 0, 30),
+            'expiresAt' => $expires,
+            'daysLeft' => $expires === null ? null : (int)ceil(($expires - $now) / 86400),
+        ];
+    }
+
     private function license(): void
     {
-        $s = 'Лицензия';
+        $s = 'Лицензии';
         if (!class_exists('\Bitrix\Main\Loader') || !($this->installed)('shef.toolsai') || !\Bitrix\Main\Loader::includeModule('shef.toolsai')
             || !method_exists('\Shef\ToolsAi\Container', 'getLicense')) {
-            $this->row($s, 'INFO', 'shef.toolsai', 'лицензия не читается (модуль не установлен или старый)');
+            $this->row($s, 'INFO', 'shef.toolsai', 'не читается (модуль не установлен или старый)');
+        } else {
+            try {
+                $st = \Shef\ToolsAi\Container::getLicense()->status(false);
+                $type = is_array($st->payload) ? (string)($st->payload['type'] ?? '') : '';
+                // срок лицензии — expires_at (нет — бессрочная); сертификат продлевается сам — valid_until
+                $until = is_array($st->payload) && is_int($st->payload['expires_at'] ?? null) ? $st->payload['expires_at'] : null;
+                $cert = is_array($st->payload) && is_int($st->payload['valid_until'] ?? null) ? $st->payload['valid_until'] : null;
+                $this->row($s, $st->mode === 'active' ? ($st->warning ? 'WARN' : 'OK') : ($st->isWorking() ? 'INFO' : 'FAIL'), 'shef.toolsai', $st->mode
+                    .($type !== '' ? ', '.$type : '')
+                    .($until !== null ? ', до '.date('d.m.Y', $until) : ($st->mode === 'active' ? ', без срока' : ''))
+                    .($cert !== null ? ', сертификат до '.date('d.m.Y', $cert) : '')
+                    .($st->daysLeft !== null ? ', осталось дней: '.$st->daysLeft : '')
+                    .($st->noLink ? ', давно без связи с сервером лицензий' : ''));
+                $this->data['license'] = ['mode' => $st->mode, 'type' => $type, 'until' => $until, 'certificateUntil' => $cert, 'daysLeft' => $st->daysLeft, 'working' => $st->isWorking(), 'noLink' => $st->noLink];
+            } catch (\Throwable $e) {
+                $this->row($s, 'WARN', 'shef.toolsai', 'ошибка чтения: '.get_class($e));
+            }
+        }
+        if (!($this->installed)('shef.toolsaiassistant')) {
+            $this->row($s, 'INFO', 'shef.cowork (MCP)', 'не читается: помощник не установлен');
+            $this->data['coworkLicense'] = null;
             return;
         }
-        try {
-            $st = \Shef\ToolsAi\Container::getLicense()->status(false);
-            $type = is_array($st->payload) ? (string)($st->payload['type'] ?? '') : '';
-            $this->row($s, $st->mode === 'active' ? 'OK' : ($st->isWorking() ? 'INFO' : 'FAIL'), 'режим', $st->mode.($type !== '' ? ', '.$type : '').($st->daysLeft !== null ? ', осталось дней: '.$st->daysLeft : '').($st->noLink ? ', давно без связи с сервером' : ''));
-            $this->data['license'] = ['mode' => $st->mode, 'type' => $type, 'daysLeft' => $st->daysLeft, 'working' => $st->isWorking()];
-        } catch (\Throwable $e) {
-            $this->row($s, 'WARN', 'режим', 'ошибка чтения: '.get_class($e));
+        $o = $this->opts('shef.toolsaiassistant');
+        $c = self::coworkLicense((string)($o['sys_mcp_license'] ?? ''), time());
+        $this->data['coworkLicense'] = $c;
+        if ($c === null) {
+            $this->row($s, 'WARN', 'shef.cowork (MCP)', 'срок неизвестен: помощник ещё не получал ответ сервера MCP');
+            return;
         }
+        $left = $c['daysLeft'];
+        $this->row($s, $c['status'] !== 'active' ? 'FAIL' : ($left !== null && $left <= 30 ? 'WARN' : 'OK'), 'shef.cowork (MCP)', $c['status']
+            .($c['expiresAt'] !== null ? ', до '.date('d.m.Y', $c['expiresAt']).', осталось дней: '.$left : ($c['status'] === 'active' ? ', без срока' : '')));
     }
 
     /** Каталоги модулей shef.*: local главнее bitrix, как у ядра. @return array<string, string> */
