@@ -40,7 +40,7 @@ final class Diag
     public const FORMAT = 1;
 
     /** Версия скрипта: отличает старые копии у клиентов. */
-    public const VERSION = '1.1.0';
+    public const VERSION = '1.2.0';
 
     /** Выкатка, к которой относятся TARGETS. */
     public const RELEASE = '2026-11-10';
@@ -341,6 +341,52 @@ final class Diag
         return ['path' => $path, 'route' => $route, 'method' => $method, 'behind' => $behind, 'done' => $done, 'unknown' => $unknown];
     }
 
+    /** memory_limit php.ini в байтах; -1 и пусто — без предела (null). */
+    public static function memoryBytes(string $ini): ?int
+    {
+        $ini = trim($ini);
+        if ($ini === '' || $ini === '-1') {
+            return null;
+        }
+        $number = (int)$ini;
+
+        return match (strtolower(substr($ini, -1))) {
+            'g' => $number * 1024 ** 3,
+            'm' => $number * 1024 ** 2,
+            'k' => $number * 1024,
+            default => $number,
+        };
+    }
+
+    /**
+     * Пределы ядра для записи звонка при своём сервере распознавания (toolsai-mp3-txt#33): как в
+     * отчёте «Проверить и включить» shef.toolsai — меньше 2 ч или 64 МБ — WARN.
+     *
+     * @return array{0: string, 1: string} уровень, текст
+     */
+    public static function crmAudioLimits(string $callRaw, string $sizeRaw, bool $ownAsr): array
+    {
+        $call = is_numeric($callRaw) ? (int)$callRaw : 3600;
+        $size = is_numeric($sizeRaw) ? (int)$sizeRaw : 25 * 1024 * 1024;
+        $text = 'ядро отдаёт звонки до '.$call.' с и '.intdiv($size, 1024 * 1024).' МБ';
+        if (!$ownAsr) {
+            return ['INFO', $text.' (распознавание не на своём сервере)'];
+        }
+
+        return $call >= 7200 && $size >= 64 * 1024 * 1024
+            ? ['OK', $text]
+            : ['WARN', $text.' — меньше 2 ч и 64 МБ: «Проверить и включить» shef.toolsai'];
+    }
+
+    /** memory_limit: меньше 512M — WARN (запись до 64 МБ в памяти PHP). @return array{0: string, 1: string} */
+    public static function memoryLevel(string $ini): array
+    {
+        $bytes = self::memoryBytes($ini);
+        $ok = $bytes === null || $bytes >= 512 * 1024 * 1024;
+
+        return [$ok ? 'OK' : 'WARN', ($ini !== '' ? $ini : '—').($ok ? '' : ' — для записей до 64 МБ нужно от 512M')];
+    }
+
     /** Убрать из строки известные значения секретов. @param string[] $secrets */
     public static function redact(string $text, array $secrets): string
     {
@@ -559,6 +605,22 @@ final class Diag
                 $this->data['directions'][$prefix]['health'] = $code;
             }
         }
+
+        // Пределы записи звонка (toolsai-mp3-txt#33): ядро crm и память PHP — веб и CLI (агенты, cron)
+        $asrUrl = (string)($this->data['directions']['asr']['url'] ?? '');
+        $own = $asrUrl !== '' && !str_contains(strtolower($asrUrl), 'api.openai.com');
+        $crm = $this->opts('crm');
+        [$level, $text] = self::crmAudioLimits((string)($crm['ai_integration_audio_max_call_time'] ?? ''), (string)($crm['ai_integration_audiofile_max_size'] ?? ''), $own);
+        $this->row($s, $level, 'crm пределы записи', $text);
+        [$level, $text] = self::memoryLevel((string)ini_get('memory_limit'));
+        $this->row($s, $level, 'php memory_limit ('.PHP_SAPI.')', $text);
+        $canShell = function_exists('shell_exec') && !in_array('shell_exec', array_map('trim', explode(',', (string)ini_get('disable_functions'))), true);
+        $cli = $canShell ? trim((string)@shell_exec('php -r \'echo ini_get("memory_limit");\' 2>/dev/null')) : '';
+        if (PHP_SAPI !== 'cli' || $cli !== (string)ini_get('memory_limit')) {
+            [$level, $text] = $cli !== '' ? self::memoryLevel($cli) : ['INFO', 'не проверено (shell_exec выключен или нет php в PATH)'];
+            $this->row($s, $level, 'php memory_limit (CLI: агенты, cron)', $text);
+        }
+        $this->data['memoryLimit'] = ['sapi' => (string)ini_get('memory_limit'), 'cli' => $cli];
     }
 
     /**
