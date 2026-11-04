@@ -1,6 +1,10 @@
 # change log
 
 ## Не выпущено
+
+## 3.10.1 — 2026-11-04
+
+* Тексты для людей (CHANGELOG, справка, лента, строки интерфейса) — без названий моделей и сравнений с другими продуктами. (лента: нет)
 * Общий журнал модулей линейки (bx-shef/toolsai#612): `Shef\Options\Log\Journal::for('<модуль>')->info|warning|error($tag, $message, $context)`. Строка `время UTC | уровень | модуль | тег | сообщение | JSON`, файлы по дням в `<каталог логов>/shef.logs/<модуль>/` (вне корня сайта, `.htaccess`), хранение 5 дней, потолок 20 МБ на модуль; ротация при первой записи за сутки и агентом `Journal::rotateAgent()` (ставит модуль-потребитель). Маска секретов `Shef\Options\Log\Mask` — при записи и ещё раз в `tail()` для архива поддержки: ключи провайдеров, Bearer/Basic, `Authorization`/`Cookie`, сертификат `BXL1.`, JWT, вебхук `/rest/<id>/<код>/`, OAuth-код `?code=` в адресе, пароль в адресе, поля и параметры с секретными именами — `••••` и последние 4 знака. Сбой записи не роняет модуль. Тест `tests/journal_test.php` (проверен мутациями)
 * Документация для разработчиков модулей линейки: `docs/dev/README.md` (вход), `docs/dev/settings.md` (страница настроек на shef.options), `docs/dev/installer.md` (канон установщика, `install/layout.php`, `shef:modules:sync`); `docs/9_traitlist.md` — `TraitList\Log`, `Tools\LogCollection`, `Uf\Entity`, `Uf\IEntity`; `docs/5_utils.md` — `getTextParserToHtml`, `signComponentParams`, `unsignComponentParams`; `docs/3_options.md` — `Tab`, `AOption`, `Ui\SettingsForm` (лента: нет)
 
@@ -25,7 +29,7 @@
 * `_log()` (и трейт `TraitList\Log`, `Integration\AEvents`, `Integration\IBlock\AEntity`) пишет **вне корня сайта** (#47): замер на стенде — файл в `<DOCUMENT_ROOT>/local/log` отдавался браузеру. Каталог — `shef_options_log_dir()`: константа `SHEF_OPTIONS_LOG_DIR` (проект может вернуть старый путь), каталог логов shef.problems (`Constants::getLogDir()`: его `_log()` и так пишет туда — обе копии пишут в одно место), `BX_TEMPORARY_FILES_DIRECTORY/sh_log`, `<родитель корня сайта>/sh_log` (BitrixVM — `/home/bitrix/sh_log`, как у shef.problems), иначе прежний `/local/log` с `.htaccess` «закрыто» (nginx его не читает — закрыть в конфигурации)
 
 ## 3.6.0 — 2026-10-26
-* Страница настроек модуля (options.php) — в виде «Настроек BitrixGPT» Битрикс24: вкладка — белая карточка со шапкой и «Свернуть», настройка — строка «название — поле», переключатели вместо галочек, кнопки «Отмена / Сохранить» внизу. Форма — Ui\SettingsForm (перенос из shef.toolsai, bx-shef/toolsai#96): поля штатные (ui-ctl, ui.switcher), имена прежние (param_<ВКЛАДКА>_<код>)
+* Страница настроек модуля (options.php): вкладка — белая карточка со шапкой и «Свернуть», настройка — строка «название — поле», переключатели вместо галочек, кнопки «Отмена / Сохранить» внизу. Форма — Ui\SettingsForm (перенос из shef.toolsai, bx-shef/toolsai#96): поля штатные (ui-ctl, ui.switcher), имена прежние (param_<ВКЛАДКА>_<код>)
 * Карточки — только если форма умеет все поля страницы (Checkbox, Text, NumberInt, NumberFloat, TextArea, Enum*, RowInfo; SettingsForm::supports()). Есть поле другого вида (Department, Users…) — страница прежняя, со вкладками: такое поле не пропадёт
 * Сохранение карточек — только пришедшие поля (SettingsForm::collect(), флаг отрисовки): форма без JS ничего не затирает. Прежние вкладки сохраняются так же, как в прошлой версии
 * Модули линейки, у которых options.php — копия канона, получают новый вид, заменив копию; при старом shef.options (без SettingsForm) копия показывает прежние вкладки, без ошибки
