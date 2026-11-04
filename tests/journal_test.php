@@ -45,6 +45,32 @@ Check::same('JSON-строка с пробелами целиком', str_contai
 Check::same('bearer в нижнем регистре', str_contains(Mask::string('hdr bearer '.$bearer), $bearer), false);
 Check::same('имя через дефис', str_contains(Mask::string('license-key=LICENSE0123456789'), 'LICENSE0123'), false);
 Check::same('«@» в пароле адреса', Mask::string('https://user:p@ss@db.test/'), 'https://user:••••@db.test/');
+$leaks = static function (string $text, string $secret): bool {
+    return str_contains(Mask::string($text), $secret);
+};
+Check::same('токены Б24: AUTH_ID, REFRESH_ID, auth[access_token], application_token', [
+    $leaks('AUTH_ID=b24authTESTvalue01', 'b24authTEST'),
+    $leaks('REFRESH_ID=b24refrTESTvalue02', 'b24refrTEST'),
+    $leaks('auth[access_token]=b24accTESTvalue03&x=1', 'b24accTEST'),
+    $leaks('auth[application_token]=b24appTESTvalue04', 'b24appTEST'),
+], [false, false, false, false]);
+Check::same('значение короче 4 знаков в начале и в кавычках', [
+    $leaks('password=p&ss', 'p&ss') && $leaks('password=p&ss', 'p'),
+    $leaks("password='a b c d'", 'a b c d'),
+    $leaks('pass: "my secret pass"', 'secret pass'),
+], [false, false, false]);
+Check::same('print_r, var_export, экранированный JSON, XML, urlencode', [
+    $leaks('[api_key] => printrTESTsecret01', 'printrTEST'),
+    $leaks("'api_key' => 'varexpTESTsecret02'", 'varexpTEST'),
+    $leaks('{\"token\":\"escTESTsecret03\"}', 'escTEST'),
+    $leaks('<password>xmlTESTsecret04</password>', 'xmlTEST'),
+    $leaks('client_secret%3DurlTESTsecret05', 'urlTEST'),
+    $leaks('hook https://a.test/rest/7/ab_cd-ef1234/', 'ab_cd-ef1234'),
+], [false, false, false, false, false, false]);
+$t = microtime(true);
+Mask::string(str_repeat('a-', 200000));
+Check::same('400 КБ «a-a-a…» — без квадратичного времени (< 2 с)', microtime(true) - $t < 2.0, true);
+Check::same('сбой PCRE — строка скрыта, а не открыта', str_contains(Mask::string("password=\xff\xfe".$key), $key), false);
 Check::same('контекст по имени поля', Mask::context(['api_key' => $key, 'n' => 5, 'deep' => ['access_token' => 'short']]), ['api_key' => '••••0123', 'n' => 5, 'deep' => ['access_token' => '••••']]);
 
 Check::group('запись');

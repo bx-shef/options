@@ -136,7 +136,7 @@ final class Journal
             $isNew = !is_file($file);
             @file_put_contents($file, $line."\n", FILE_APPEND | LOCK_EX);
             if ($isNew) {
-                @chmod($file, defined('BX_FILE_PERMISSIONS') ? BX_FILE_PERMISSIONS : 0640);
+                @chmod($file, 0640);
             }
         } catch (\Throwable) {
             // журнал не роняет модуль
@@ -224,8 +224,8 @@ final class Journal
             $text = '# журнал обрезан до последних '.$maxBytes." байт\n".($pos === false ? '' : substr($text, $pos + 1));
         }
 
-        // Правила маски не выходят за строку — один проход по всему тексту.
-        return Mask::string($text);
+        // Построчно: сбой маски на одной строке скрывает её, а не весь журнал.
+        return implode("\n", array_map([Mask::class, 'string'], explode("\n", $text)));
     }
 
     /** Агент: ротация журналов всех модулей. Ставит модуль-потребитель (shef.toolsai). */
@@ -247,10 +247,16 @@ final class Journal
 
     private function ensureDir(): bool
     {
+        // Запасной каталог shef_options_log_dir() — DOCUMENT_ROOT/local/log: на nginx .htaccess
+        // не работает, и журнал отдался бы браузеру. Внутри корня сайта журнал не пишем.
+        $root = rtrim((string)($_SERVER['DOCUMENT_ROOT'] ?? ''), '/');
+        if ($root !== '' && str_starts_with($this->dir.'/', $root.'/')) {
+            return false;
+        }
         if (is_dir($this->dir)) {
             return is_writable($this->dir);
         }
-        $perm = defined('BX_DIR_PERMISSIONS') ? BX_DIR_PERMISSIONS : 0750;
+        $perm = 0750;
         if (!@mkdir($this->dir, $perm, true) && !is_dir($this->dir)) {
             return false;
         }
