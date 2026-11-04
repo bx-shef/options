@@ -18,7 +18,7 @@ final class Mask
     public const DOTS = '••••';
 
     /** Имена полей и параметров, значения которых — секрет (без учёта регистра, «-» = «_»). */
-    private const SECRET_NAMES = 'api_?key|x_api_key|apikey|access_?token|refresh_?token|id_?token|auth_?token|token|secret|client_?secret|password|passwd|pass|pwd|cookie|set_cookie|authorization|auth|sessid|phpsessid|webhook|private_?key|license_?key|key';
+    private const SECRET_NAMES = 'api[_-]?key|x[_-]api[_-]key|apikey|access[_-]?token|refresh[_-]?token|id[_-]?token|auth[_-]?token|token|secret|client[_-]?secret|password|passwd|pass|pwd|cookie|set[_-]cookie|authorization|auth|sessid|phpsessid|webhook|private[_-]?key|license[_-]?key|key';
 
     public static function tail(string $value): string
     {
@@ -40,12 +40,29 @@ final class Mask
         if ($text === '') {
             return $text;
         }
+        foreach (self::rules() as $re => $cb) {
+            $res = preg_replace_callback($re, $cb, $text);
+            if (is_string($res)) {
+                $text = $res;
+            }
+        }
+
+        return $text;
+    }
+
+    /** @return array<string, callable> правила собираются один раз на процесс */
+    private static function rules(): array
+    {
+        static $rules = null;
+        if ($rules !== null) {
+            return $rules;
+        }
         $tail = static fn (array $m): string => self::tail($m[0]);
         $rules = [
             // Заголовки целиком: Authorization: …, Cookie: …
             '/\b(authorization|proxy-authorization|cookie|set-cookie)(\s*:\s*)([^\r\n|]+)/i' => static fn (array $m): string => $m[1].$m[2].self::DOTS,
-            // Bearer/Basic в любом месте
-            '/\b(Bearer|Basic)\s+([A-Za-z0-9._~+\/=-]{6,})/' => static fn (array $m): string => $m[1].' '.self::tail($m[2]),
+            // Bearer (любой регистр) и Basic в любом месте
+            '/\b((?i:bearer)|Basic)\s+([A-Za-z0-9._~+\/=-]{6,})/' => static fn (array $m): string => $m[1].' '.self::tail($m[2]),
             // Сертификат лицензии BXL1.…, JWT
             '/\bBXL1\.[A-Za-z0-9_\-]+(?:\.[A-Za-z0-9_\-]+)?/' => $tail,
             '/\beyJ[A-Za-z0-9_\-]{5,}\.[A-Za-z0-9_\-]{5,}\.[A-Za-z0-9_\-]{5,}/' => $tail,
@@ -54,20 +71,17 @@ final class Mask
             '/\bAIza[0-9A-Za-z_\-]{20,}/' => $tail,
             // Вебхук Битрикс24: /rest/<пользователь>/<код>/
             '#(/rest/\d+/)([A-Za-z0-9]{6,})#' => static fn (array $m): string => $m[1].self::DOTS,
-            // Адрес с логином и паролем: scheme://user:pass@host
-            '#(\b[a-z][a-z0-9+.-]*://[^/\s:@]+:)([^@\s/]+)(@)#i' => static fn (array $m): string => $m[1].self::DOTS.$m[3],
+            // Адрес с логином и паролем: scheme://user:pass@host (пароль — до последнего «@»)
+            '#(\b[a-z][a-z0-9+.-]*://[^/\s:@]+:)([^\s/]+)(@)#i' => static fn (array $m): string => $m[1].self::DOTS.$m[3],
+            // "name":"значение с пробелами" — строка JSON целиком, до закрывающей кавычки
+            '/(?<![A-Za-z0-9_])((?:'.self::SECRET_NAMES.'|[A-Za-z0-9_\-]*(?:token|secret|password|api[_-]?key))"\s*:\s*")((?:[^"\\\\\r\n]|\\\\.){4,})(?=")/i'
+                => static fn (array $m): string => str_starts_with($m[2], self::DOTS) ? $m[0] : $m[1].self::tail($m[2]),
             // name=value, name: value, "name":"value" — в query, JSON, тексте
             '/(?<![A-Za-z0-9_])((?:'.self::SECRET_NAMES.'|[A-Za-z0-9_\-]*(?:token|secret|password|api[_-]?key))["\']?\s*[=:]\s*["\']?)([^\s"\'&,;|}\]]{4,})/i'
                 => static fn (array $m): string => str_starts_with($m[2], self::DOTS) ? $m[0] : $m[1].self::tail($m[2]),
         ];
-        foreach ($rules as $re => $cb) {
-            $res = preg_replace_callback($re, $cb, $text);
-            if (is_string($res)) {
-                $text = $res;
-            }
-        }
 
-        return $text;
+        return $rules;
     }
 
     /**

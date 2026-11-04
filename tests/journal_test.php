@@ -41,6 +41,10 @@ Check::same('query ?token=', Mask::string('https://a.test/x?token=secretvalue123
 Check::same('JSON "password"', str_contains(Mask::string('{"password":"hunter2hunter2"}'), 'hunter2'), false);
 Check::same('логин:пароль в адресе', Mask::string('https://user:p4ssw0rd@db.test/'), 'https://user:••••@db.test/');
 Check::same('обычный текст не трогаем', Mask::string('Модель ответила за 1200 мс, monkey: banana'), 'Модель ответила за 1200 мс, monkey: banana');
+Check::same('JSON-строка с пробелами целиком', str_contains(Mask::string('{"password":"correct horse battery staple"}'), 'battery'), false);
+Check::same('bearer в нижнем регистре', str_contains(Mask::string('hdr bearer '.$bearer), $bearer), false);
+Check::same('имя через дефис', str_contains(Mask::string('license-key=LICENSE0123456789'), 'LICENSE0123'), false);
+Check::same('«@» в пароле адреса', Mask::string('https://user:p@ss@db.test/'), 'https://user:••••@db.test/');
 Check::same('контекст по имени поля', Mask::context(['api_key' => $key, 'n' => 5, 'deep' => ['access_token' => 'short']]), ['api_key' => '••••0123', 'n' => 5, 'deep' => ['access_token' => '••••']]);
 
 Check::group('запись');
@@ -78,7 +82,7 @@ Check::group('сбой записи');
 $bad = $base.'/file-not-dir';
 file_put_contents($bad, '');
 (new Journal('shef.toolsai', $bad, $clock))->info('t', 'm');
-Check::same('каталог недоступен — молча, без исключения', true, true);
+Check::same('каталог недоступен — молча, без исключения и без файлов', is_dir($bad.'/shef.toolsai'), false);
 
 exec((DIRECTORY_SEPARATOR === '\\' ? 'rmdir /s /q ' : 'rm -rf ').escapeshellarg($base));
 Check::finish();

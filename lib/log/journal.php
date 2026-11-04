@@ -169,6 +169,7 @@ final class Journal
      */
     public function rotate(): void
     {
+        clearstatcache();
         $oldest = gmdate('Y-m-d', ($this->clock)() - (self::KEEP_DAYS - 1) * 86400);
         $files = $this->files();
         foreach ($files as $day => $path) {
@@ -195,11 +196,12 @@ final class Journal
     }
 
     /**
-     * Журнал модуля для архива: последние $maxBytes, маска ещё раз по каждой строке.
+     * Журнал модуля для архива: последние $maxBytes, маска ещё раз по всему тексту.
      * Обрезка отмечается первой строкой.
      */
     public function tail(int $maxBytes = 5 * 1024 * 1024): string
     {
+        clearstatcache();
         $chunks = [];
         $left = $maxBytes;
         $cut = false;
@@ -222,7 +224,8 @@ final class Journal
             $text = '# журнал обрезан до последних '.$maxBytes." байт\n".($pos === false ? '' : substr($text, $pos + 1));
         }
 
-        return implode("\n", array_map([Mask::class, 'string'], explode("\n", $text)));
+        // Правила маски не выходят за строку — один проход по всему тексту.
+        return Mask::string($text);
     }
 
     /** Агент: ротация журналов всех модулей. Ставит модуль-потребитель (shef.toolsai). */
@@ -274,7 +277,8 @@ final class Journal
         if ($size > $bytes) {
             fseek($fh, $size - $bytes);
         }
-        $data = (string)stream_get_contents($fh);
+        // Не больше $bytes: файл мог вырасти после filesize().
+        $data = (string)stream_get_contents($fh, $bytes);
         fclose($fh);
 
         return $data;
