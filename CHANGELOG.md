@@ -2,6 +2,8 @@
 
 ## Не выпущено
 
+## 3.10.1 — 2026-11-04
+
 * Тексты для людей (CHANGELOG, справка, лента, строки интерфейса) — без названий моделей и сравнений с другими продуктами. (лента: нет)
 * Документация для разработчиков модулей линейки: `docs/dev/README.md` (вход), `docs/dev/settings.md` (страница настроек на shef.options), `docs/dev/installer.md` (канон установщика, `install/layout.php`, `shef:modules:sync`); `docs/9_traitlist.md` — `TraitList\Log`, `Tools\LogCollection`, `Uf\Entity`, `Uf\IEntity`; `docs/5_utils.md` — `getTextParserToHtml`, `signComponentParams`, `unsignComponentParams`; `docs/3_options.md` — `Tab`, `AOption`, `Ui\SettingsForm` (лента: нет)
 
