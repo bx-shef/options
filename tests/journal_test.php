@@ -68,6 +68,11 @@ Check::same('print_r, var_export, экранированный JSON, XML, urlenc
     $leaks('hook https://a.test/rest/7/ab_cd-ef1234/', 'ab_cd-ef1234'),
 ], [false, false, false, false, false, false]);
 Check::same('аргументы в стеке исключения', Mask::string("#0 /w/lib/client.php(12): Client->login('admin', 'StackTESTpass1')\n#1 {main}"), "#0 /w/lib/client.php(12): Client->login(…)\n#1 {main}");
+Check::same('OAuth-код в адресе под маской, member_id и код итога — нет', [
+    $leaks('https://p.test/oauth?code=oauthTESTcode0123&state=1', 'oauthTESTcode'),
+    Mask::string('member_id=abc123def456'),
+    Mask::context(['code' => 'timeout']),
+], [false, 'member_id=abc123def456', ['code' => 'timeout']]);
 $t = microtime(true);
 Mask::string(str_repeat('a-', 200000));
 Check::same('400 КБ «a-a-a…» — без квадратичного времени (< 2 с)', microtime(true) - $t < 2.0, true);

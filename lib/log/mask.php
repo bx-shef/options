@@ -68,6 +68,8 @@ final class Mask
         $rules = [
             // Стек исключения: аргументы вызовов (при zend.exception_ignore_args=Off там пароли)
             '/(#\d+ [^\r\n]*?\): [^\r\n(]+\()([^\r\n]+)(\)\s*$)/m' => static fn (array $m): string => $m[1].'…'.$m[3],
+            // OAuth-код в адресе: ?code=… / &code=… (поле контекста code — код итога, его не трогаем)
+            '/([?&]code=)([^&\s"\'#]+)/i' => static fn (array $m): string => $m[1].self::tail($m[2]),
             // Заголовки целиком: Authorization: …, Cookie: …
             '/\b(authorization|proxy-authorization|cookie|set-cookie)(\s*:\s*)([^\r\n|]+)/i' => static fn (array $m): string => $m[1].$m[2].self::DOTS,
             // Bearer (любой регистр) и Basic в любом месте
