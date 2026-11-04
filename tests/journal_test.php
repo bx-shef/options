@@ -67,6 +67,7 @@ Check::same('print_r, var_export, экранированный JSON, XML, urlenc
     $leaks('client_secret%3DurlTESTsecret05', 'urlTEST'),
     $leaks('hook https://a.test/rest/7/ab_cd-ef1234/', 'ab_cd-ef1234'),
 ], [false, false, false, false, false, false]);
+Check::same('аргументы в стеке исключения', Mask::string("#0 /w/lib/client.php(12): Client->login('admin', 'StackTESTpass1')\n#1 {main}"), "#0 /w/lib/client.php(12): Client->login(…)\n#1 {main}");
 $t = microtime(true);
 Mask::string(str_repeat('a-', 200000));
 Check::same('400 КБ «a-a-a…» — без квадратичного времени (< 2 с)', microtime(true) - $t < 2.0, true);

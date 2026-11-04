@@ -66,6 +66,8 @@ final class Mask
         // позиция начинала бы новый разбор (квадратичное время на 5 МБ архива).
         $name = '(?<![A-Za-z0-9_\-])((?:'.self::SECRET_NAMES.'|[A-Za-z0-9_\-]{0,40}(?:token|secret|password|api[_-]?key))';
         $rules = [
+            // Стек исключения: аргументы вызовов (при zend.exception_ignore_args=Off там пароли)
+            '/(#\d+ [^\r\n]*?\): [^\r\n(]+\()([^\r\n]+)(\)\s*$)/m' => static fn (array $m): string => $m[1].'…'.$m[3],
             // Заголовки целиком: Authorization: …, Cookie: …
             '/\b(authorization|proxy-authorization|cookie|set-cookie)(\s*:\s*)([^\r\n|]+)/i' => static fn (array $m): string => $m[1].$m[2].self::DOTS,
             // Bearer (любой регистр) и Basic в любом месте
