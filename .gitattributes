@@ -1,3 +1,7 @@
+# Все текстовые файлы — LF в рабочей копии при любом core.autocrlf (Windows): с CRLF тесты,
+# читающие исходники регулярками, и сверки манифестов расходятся. Правила ниже уточняют это.
+* text=auto eol=lf
+
 # Что НЕ попадает в Composer-пакет (git archive соблюдает export-ignore).
 #
 # Список обязан совпадать со списком KEEP в build.sh, иначе на портал уедет
@@ -16,3 +20,11 @@
 /build.sh		export-ignore
 /composer.lock		export-ignore
 /tests/			export-ignore
+
+*.png		binary
+*.jpg		binary
+*.webp		binary
+*.woff2		binary
+*.ico		binary
+*.gz		binary
+*.zip		binary
