@@ -1,11 +1,11 @@
 # change log
 
 ## Не выпущено
+* Общий журнал модулей линейки (bx-shef/toolsai#612): `Shef\Options\Log\Journal::for('<модуль>')->info|warning|error($tag, $message, $context)`. Строка `время UTC | уровень | модуль | тег | сообщение | JSON`, файлы по дням в `<каталог логов>/shef.logs/<модуль>/` (вне корня сайта, `.htaccess`), хранение 5 дней, потолок 20 МБ на модуль; ротация при первой записи за сутки и агентом `Journal::rotateAgent()` (ставит модуль-потребитель). Маска секретов `Shef\Options\Log\Mask` — при записи и ещё раз в `tail()` для архива поддержки: ключи провайдеров, Bearer/Basic, `Authorization`/`Cookie`, сертификат `BXL1.`, JWT, вебхук `/rest/<id>/<код>/`, OAuth-код `?code=` в адресе, пароль в адресе, поля и параметры с секретными именами — `••••` и последние 4 знака. Сбой записи не роняет модуль. Тест `tests/journal_test.php` (проверен мутациями)
 
 ## 3.10.1 — 2026-11-04
 
 * Тексты для людей (CHANGELOG, справка, лента, строки интерфейса) — без названий моделей и сравнений с другими продуктами. (лента: нет)
-* Общий журнал модулей линейки (bx-shef/toolsai#612): `Shef\Options\Log\Journal::for('<модуль>')->info|warning|error($tag, $message, $context)`. Строка `время UTC | уровень | модуль | тег | сообщение | JSON`, файлы по дням в `<каталог логов>/shef.logs/<модуль>/` (вне корня сайта, `.htaccess`), хранение 5 дней, потолок 20 МБ на модуль; ротация при первой записи за сутки и агентом `Journal::rotateAgent()` (ставит модуль-потребитель). Маска секретов `Shef\Options\Log\Mask` — при записи и ещё раз в `tail()` для архива поддержки: ключи провайдеров, Bearer/Basic, `Authorization`/`Cookie`, сертификат `BXL1.`, JWT, вебхук `/rest/<id>/<код>/`, OAuth-код `?code=` в адресе, пароль в адресе, поля и параметры с секретными именами — `••••` и последние 4 знака. Сбой записи не роняет модуль. Тест `tests/journal_test.php` (проверен мутациями)
 * Документация для разработчиков модулей линейки: `docs/dev/README.md` (вход), `docs/dev/settings.md` (страница настроек на shef.options), `docs/dev/installer.md` (канон установщика, `install/layout.php`, `shef:modules:sync`); `docs/9_traitlist.md` — `TraitList\Log`, `Tools\LogCollection`, `Uf\Entity`, `Uf\IEntity`; `docs/5_utils.md` — `getTextParserToHtml`, `signComponentParams`, `unsignComponentParams`; `docs/3_options.md` — `Tab`, `AOption`, `Ui\SettingsForm` (лента: нет)
 
 ## 3.10.0 — 2026-11-03
