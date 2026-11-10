@@ -189,6 +189,28 @@ namespace {
     Check::same('сбои: отказ установки, исключение обновления, блокировка', $r['failed'], 3);
     Check::same('текст отказа и исключения — в отчёте', [str_contains($r['lines'][1], 'ОШИБКА: нет модуля currency'), str_contains($r['lines'][3], 'ОШИБКА: Class not found'), str_ends_with($r['lines'][4], 'skip     ')], [true, true, true]);
 
+    Check::group('Sync::installArgv: дочерний процесс установки (#83)');
+
+    // Копия расчёта корня из ядрового bitrix/bitrix.php: от getcwd() и SCRIPT_NAME
+    $coreDir = sys_get_temp_dir().'/shef_sync_core_'.getmypid();
+    mkdir($coreDir.'/bitrix', 0777, true);
+    file_put_contents($coreDir.'/bitrix/bitrix.php', "<?php\n\$p = realpath(getcwd().DIRECTORY_SEPARATOR.\$_SERVER['SCRIPT_NAME']);\n\$r = \$p === false ? false : realpath(dirname(dirname(\$p)));\nif (\$r === false) { fwrite(STDERR, 'no root'); exit(255); }\necho 'ROOT='.\$r.'|'.(\$argv[1] ?? '').'|'.(\$argv[2] ?? '');\n");
+    $argv = Sync::installArgv(PHP_BINARY, 'shef:modules:install-one', 'shef.currency');
+    Check::same('путь к bitrix.php относительный', [$argv[1], $argv[2], $argv[3], $argv[4]], ['bitrix.php', 'shef:modules:install-one', 'shef.currency', '--no-interaction']);
+    $proc = proc_open($argv, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, $coreDir.'/bitrix');
+    $out = stream_get_contents($pipes[1]);
+    stream_get_contents($pipes[2]);
+    $rc = proc_close($proc);
+    Check::same('из каталога bitrix ядро находит корень сайта', [$rc, $out], [0, 'ROOT='.realpath($coreDir).'|shef:modules:install-one|shef.currency']);
+    // тот же запуск с абсолютным путём — прежний сбой: корень не находится
+    $abs = $argv;
+    $abs[1] = $coreDir.'/bitrix/bitrix.php';
+    $proc = proc_open($abs, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, $coreDir.'/bitrix');
+    stream_get_contents($pipes[1]);
+    stream_get_contents($pipes[2]);
+    Check::same('с абсолютным путём корень не находится (причина #83)', proc_close($proc), 255);
+    exec('rm -rf '.escapeshellarg($coreDir));
+
     exec('rm -rf '.escapeshellarg($portal));
 
     Check::finish();

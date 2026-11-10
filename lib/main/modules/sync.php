@@ -242,6 +242,18 @@ class Sync
     }
 
     /**
+     * Команда дочернего процесса установки: запускать из каталога <корень>/bitrix с ОТНОСИТЕЛЬНЫМ
+     * путём `bitrix.php` (issue #83). Ядровой bitrix.php считает DOCUMENT_ROOT из getcwd() и
+     * SCRIPT_NAME: с абсолютным путём корень не находится, процесс падает на require_once молча.
+     *
+     * @return list<string>
+     */
+    public static function installArgv(string $phpBinary, string $commandName, string $id): array
+    {
+        return [$phpBinary, 'bitrix.php', $commandName, $id, '--no-interaction'];
+    }
+
+    /**
      * Выполнить план: установка и обновление — переданными функциями (в команде — дочерний процесс
      * и update()), версия отмечается только при успехе. blocked — тоже сбой (код выхода).
      *
