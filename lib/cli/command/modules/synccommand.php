@@ -72,7 +72,7 @@ class SyncCommand extends Command
 
         $result = Sync::run(
             $plan,
-            fn (string $id): array => $this->installOne($root, $bitrixPhp, $id),
+            fn (string $id): array => $this->installOne($root, $id),
             static fn (string $id): array => [true, implode(', ', Sync::update($id, $found[$id]))],
             [Sync::class, 'markSynced']
         );
@@ -109,9 +109,9 @@ class SyncCommand extends Command
     }
 
     /** @return array{0: bool, 1: string} */
-    private function installOne(string $root, string $bitrixPhp, string $id): array
+    private function installOne(string $root, string $id): array
     {
-        $proc = proc_open([PHP_BINARY, $bitrixPhp, InstallOneCommand::NAME, $id, '--no-interaction'], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, $root.'/bitrix');
+        $proc = proc_open(Sync::installArgv(PHP_BINARY, InstallOneCommand::NAME, $id), [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, $root.'/bitrix');
         if (!is_resource($proc)) {
             return [false, 'не удалось запустить процесс установки'];
         }
@@ -120,6 +120,9 @@ class SyncCommand extends Command
         fclose($pipes[1]);
         fclose($pipes[2]);
 
-        return [proc_close($proc) === 0, $err !== '' ? $err : $out];
+        $code = proc_close($proc);
+        $text = $err !== '' ? $err : $out;
+
+        return [$code === 0, $code !== 0 && $text === '' ? 'процесс установки завершился с кодом '.$code.' без вывода (см. php-error.log)' : $text];
     }
 }
