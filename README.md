@@ -309,7 +309,7 @@ if(!\Bitrix\Main\ModuleManager::isModuleInstalled('shef.options'))
 
 # Лицензия и поддержка
 
-MIT, см. [LICENSE](https://github.com/bx-shef/options/blob/main/LICENSE).
+Бесплатно, права у ООО «БэИксШефБай»; условия — в [LICENSE](https://github.com/bx-shef/options/blob/main/LICENSE).
 
-ИП Шевчик И.С., [bx-shef.by](https://bx-shef.by/) — вопросы и предложения на
+ООО «БэИксШефБай», [bx-shef.by](https://bx-shef.by/) — вопросы и предложения на
 offer@bx-shef.by или в [задачи репозитория](https://github.com/bx-shef/options/issues).

@@ -2,7 +2,7 @@
 	"name": "bxshef/options",
 	"description": "Битрикс24 (коробка): слой настроек модулей, базовые классы, трейты, абстракции и интерфейсы",
 	"type": "bitrix-module",
-	"license": "MIT",
+	"license": "proprietary",
 	"keywords": [
 		"bitrix",
 		"Bitrix24",
