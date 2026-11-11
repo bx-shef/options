@@ -279,7 +279,7 @@ Packagist.
 Packagist занят чужим пакетом (`shef/admin`, Laravel), `bxshef` — свой, там же
 `bxshef/leadfinish`. Тип именно `bitrix-module` плюс
 `extra.installer-name = shef.options`, и это не вкусовщина — см. ловушку ниже.
-Лицензия `MIT` в тон `LICENSE`, почта автора — `offer@bx-shef.by`.
+Лицензия `proprietary` в тон `LICENSE`, почта автора — `offer@bx-shef.by`.
 
 **База — сборка 2.2.16.** Часть файлов взята из более поздней рабочей копии,
 где сборка 2.2.16 потеряла `declare(strict_types=1)`, табы в отступах и саму
