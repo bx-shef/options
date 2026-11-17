@@ -100,3 +100,7 @@
 /* «?» у названия — кружок, как значки FAQ модулей */
 .shef-ui-row__q a { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background: var(--ui-color-accent-soft-blue-3, #e5f0fa); color: var(--ui-color-accent-main-link, #2067b0); font-size: 11px; font-weight: 600; line-height: 1; text-decoration: none; vertical-align: 1px; }
 .shef-ui-row__q a:hover { background: var(--ui-color-accent-main-link, #2067b0); color: #fff; }
+
+/* Облачко подсказки ядра (ui.hint): ширина по содержимому, не больше 300 px, перенос строк */
+.ui-hint-popup{width:max-content;max-width:300px}
+.ui-hint-popup .ui-hint-content{max-width:300px;overflow-wrap:anywhere}
