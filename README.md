@@ -307,6 +307,14 @@ if(!\Bitrix\Main\ModuleManager::isModuleInstalled('shef.options'))
 
 Весь репозиторий — [bx-shef/options](https://github.com/bx-shef/options).
 
+# Состояние и план
+
+Текущая версия — 3.11.0 (последний выпуск на GitHub — 3.10.1; изменения 3.11.0 — в [истории изменений](https://github.com/bx-shef/options/blob/main/CHANGELOG.md)). Открытые задачи — в [задачах репозитория](https://github.com/bx-shef/options/issues):
+
+* P1 — [#70](https://github.com/bx-shef/options/issues/70) диагностика портала (`shef:modules:diag`, `tools/diag.php`);
+* P2 — [#28](https://github.com/bx-shef/options/issues/28) установщик: каталог модуля от `dirname(__DIR__)`, свои страницы в `/bitrix/admin`; [#40](https://github.com/bx-shef/options/issues/40) раздел «Если что-то пошло не так»; [#45](https://github.com/bx-shef/options/issues/45) проверка имени группы в `Pid`;
+* P3 — [#32](https://github.com/bx-shef/options/issues/32) общий код линейки, [#42](https://github.com/bx-shef/options/issues/42) README с практических задач, [#87](https://github.com/bx-shef/options/issues/87) числовые настройки модулей — в файл модуля.
+
 # Лицензия и поддержка
 
 Бесплатно, права у ООО «БэИксШефБай»; условия — в [LICENSE](https://github.com/bx-shef/options/blob/main/LICENSE).
