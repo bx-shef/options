@@ -147,5 +147,6 @@ Check::same('есть поле, которого форма не умеет (Dep
 Check::same('пусто — прежние вкладки', SettingsForm::supports([]), false);
 $page = (string)file_get_contents($root.'/options.php');
 Check::same('options.php: карточки только при supports(); сохранение карточек — collect() (только пришедшие поля)', [str_contains($page, 'if (class_exists(SettingsForm::class) && SettingsForm::supports($cardTabs))'), str_contains($page, 'SettingsForm::collect($cardTabs, $request->getPostList()->toArray())'), str_contains($page, '$tabControl->Begin();')], [true, true, true]);
+Check::same('подсказка поля — облачко ядра (data-hint, ui.hint), а не серый title', [str_contains(SettingsForm::script(), "setAttribute('data-hint', field.hint)"), str_contains(SettingsForm::script(), 'label.title'), in_array('ui.hint', SettingsForm::extensions(), true)], [true, false, true]);
 
 Check::finish();

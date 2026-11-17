@@ -334,7 +334,7 @@ final class SettingsForm
     /** Штатные расширения, нужные форме (Extension::load). */
     public static function extensions(): array
     {
-        return ['ui.switcher', 'ui.forms', 'ui.alerts', 'ui.buttons', 'ui.icon-set.outline'];
+        return ['ui.switcher', 'ui.forms', 'ui.alerts', 'ui.buttons', 'ui.icon-set.outline', 'ui.hint'];
     }
 
     /** Стили карточек — как у crm.ai.settings-slider (1.64.0). */
