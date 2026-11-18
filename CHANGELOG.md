@@ -2,6 +2,8 @@
 
 ## Не выпущено
 
+* Пункт меню пользователя «[SH] Правки ядра» (`Ui\Menu::getList()`) ведёт на страницу отчёта shef.haschangefiles `/bitrix/admin/shef_haschangefiles_list.php`, а не на удалённую `/local/admin/utils/has-change-files.php`.
+
 ## 3.11.2 — 2026-11-17
 
 * Лицензия: модуль бесплатный, права принадлежат ООО «БэИксШефБай»; вместо MIT — простая неисключительная лицензия (LICENSE), в composer.json `proprietary`, правообладатель в установщике — ООО «БэИксШефБай».

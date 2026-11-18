@@ -113,7 +113,7 @@ class Menu
             ,'ENTITY_TYPE' => 'PAGE'
             ,'ENTITY_ID' => ++$i
             ,'TITLE' => '[SH] Правки ядра'
-            ,'PUBLIC_URL' => '/local/admin/utils/has-change-files.php'
+            ,'PUBLIC_URL' => '/bitrix/admin/shef_haschangefiles_list.php'
             ,'IS_FOR_ADMIN' => true
         ];
 
