@@ -529,14 +529,11 @@ Issue #43 нашёл один путь: `RecursiveDirectoryIterator` на отс
 
 Не трогать заодно — отдельной задачей, с проверкой на портале.
 
-* `lib/ui/menu.php`: `Menu::getList()` возвращает четыре пункта меню с путями
-  вида `/local/admin/utils/has-change-files.php`, `demo-call/make.php`,
-  `show-dublicate-products.php`, `conf/numerators.php` — страницы конкретного
-  проекта, которых в модуле нет. Класс не зовёт никто: ни `.settings.php`, ни
-  код репозитория. То же по существу, что и удалённые интеграции, но решение
-  отдельное: сам механизм `onBuildBindingMenu` (пункты в меню пользователя
-  через `intranet`) линейке может пригодиться — выкидывать стоит список, а не
-  класс. Разбираться отдельно.
+* `lib/ui/menu.php`: `Menu::getList()` оставлен с одним пунктом «[SH] Правки ядра»
+  (страница shef.haschangefiles). Пункты на страницы проекта, которых нет
+  (`demo-call/make.php`, `show-dublicate-products.php`, `conf/numerators.php`),
+  убраны. Сам механизм `onBuildBindingMenu` (пункты в меню пользователя через
+  `intranet`) остаётся — линейке может пригодиться.
 * `lib/integration/order/tests/atest.php`: конструктор принимает
   `\Bitrix\Crm\Order\Order &$order` по ссылке (объекты и так передаются
   хендлом) и заканчивается `return $this;` — в конструкторе это мёртвый код.

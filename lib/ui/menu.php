@@ -117,31 +117,6 @@ class Menu
             ,'IS_FOR_ADMIN' => true
         ];
 
-        $result[] = [
-            'BINDING_ID' => 'top_panel:user_menu'
-            ,'ENTITY_TYPE' => 'PAGE'
-            ,'ENTITY_ID' => ++$i
-            ,'TITLE' => '[SH] Тестирование звонков'
-            ,'PUBLIC_URL' => '/local/admin/utils/demo-call/make.php'
-            ,'IS_FOR_ADMIN' => true
-        ];
-        $result[] = [
-            'BINDING_ID' => 'top_panel:user_menu'
-            ,'ENTITY_TYPE' => 'PAGE'
-            ,'ENTITY_ID' => ++$i
-            ,'TITLE' => '[SH] Дубликаты по товарам'
-            ,'PUBLIC_URL' => '/local/admin/utils/show-dublicate-products.php'
-            ,'IS_FOR_ADMIN' => true
-        ];
-        $result[] = [
-            'BINDING_ID' => 'top_panel:user_menu'
-            ,'ENTITY_TYPE' => 'PAGE'
-            ,'ENTITY_ID' => ++$i
-            ,'TITLE' => '[SH] Нумераторы для документов'
-            ,'PUBLIC_URL' => '/local/admin/conf/numerators.php'
-            ,'IS_FOR_ADMIN' => true
-        ];
-
         return $result;
     }
 }
