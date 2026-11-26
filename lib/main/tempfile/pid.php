@@ -363,10 +363,41 @@ class Pid
 
     // endregion ////
 
+    /**
+     * Отклоняет имя группы, которое кладёт замок не в свой каталог.
+     *
+     * Пустое имя кладёт замок прямо в каталог библиотеки, «..» уводит выше
+     * него. Тихий false из add() не годится: потребитель получил бы агент,
+     * который молча не стартует. Исключение в конструкторе — единственный
+     * способ не создать объект с таким именем.
+     *
+     * @throws \InvalidArgumentException
+     */
+    protected static function assertGroup(string $group): void
+    {
+        $bad = '' === trim($group) || str_contains($group, "\0");
+
+        foreach (preg_split('~[\\\\/]~', $group) ?: [] as $part) {
+            if ('..' === $part || '.' === $part) {
+                $bad = true;
+            }
+        }
+
+        if ($bad) {
+            throw new \InvalidArgumentException(sprintf(
+                'Pid group name must be a non-empty name inside %s, got "%s"',
+                Constants::getModuleId(),
+                str_replace("\0", '', $group)
+            ));
+        }
+    }
+
     public function __construct(
         protected readonly string $group,
         protected readonly null|string $fileNamePrefix = null
     ) {
+        static::assertGroup($group);
+
         $this->pid = getmypid();
 
         $this->file = new IO\File($this->getFilePath());
