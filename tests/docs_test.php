@@ -129,14 +129,14 @@ Check::same('каждая ссылка на GitHub ведёт в файл реп
 Check::group('классы в документации');
 
 /** Прошлое и решения владельца обязаны называть удалённое по имени. */
-$historical = ['CHANGELOG.md', 'CLAUDE.md'];
+$historical = ['CHANGELOG.md', 'CLAUDE.md']; // и подробности CLAUDE.md в docs/private/agent/
 
 $brokenClasses = [];
 $brokenMethods = [];
 $checked = 0;
 
 foreach ($markdown as $file) {
-    if (in_array($file, $historical, true)) {
+    if (in_array($file, $historical, true) || str_starts_with($file, 'docs/private/agent/')) {
         continue;
     }
 
