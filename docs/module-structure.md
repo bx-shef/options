@@ -1,6 +1,6 @@
 # Раскладка репозитория
 
-Файл про устройство репозитория. Опорные точки модуля — в [CLAUDE.md](../CLAUDE.md),
+Файл про устройство репозитория. Опорные точки модуля — в [private/agent/core.md](private/agent/core.md) (карта — [CLAUDE.md](../CLAUDE.md)),
 процесс — в [CONTRIBUTING.md](../CONTRIBUTING.md), сборка — в
 [build-and-install.md](build-and-install.md).
 
